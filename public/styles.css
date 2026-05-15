@@ -50,6 +50,55 @@ body {
   overflow-x: hidden;
 }
 
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body::before {
+  z-index: 0;
+  opacity: 0.34;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px),
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent), transparent 88%), transparent);
+  mix-blend-mode: screen;
+  animation: scan-drift 14s linear infinite;
+}
+
+body::after {
+  z-index: 0;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--accent), transparent 78%) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-2), transparent 82%) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, black 18%, black 72%, transparent);
+  animation: grid-glide 22s linear infinite;
+}
+
+@keyframes scan-drift {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(18px);
+  }
+}
+
+@keyframes grid-glide {
+  from {
+    background-position: 0 0, 0 0;
+  }
+
+  to {
+    background-position: 72px 72px, 72px 72px;
+  }
+}
+
 body[data-theme="light"] {
   color-scheme: light;
   --bg: #f5f6f1;
@@ -118,13 +167,14 @@ button,
   align-items: center;
   justify-content: center;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease;
+  transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
 button:hover,
 .button:hover {
   background: var(--panel-strong);
   border-color: color-mix(in srgb, var(--accent), white 22%);
+  transform: translateY(-1px);
 }
 
 button:disabled,
@@ -202,6 +252,7 @@ h1 {
     linear-gradient(135deg, color-mix(in srgb, var(--accent-2), transparent 88%), transparent),
     var(--panel);
   box-shadow: var(--shadow), 0 0 28px color-mix(in srgb, var(--accent-2), transparent 82%);
+  animation: clock-pulse 4s ease-in-out infinite;
 }
 
 .clock-label {
@@ -217,6 +268,17 @@ h1 {
   font-weight: 850;
   font-variant-numeric: tabular-nums;
   color: var(--accent-2);
+}
+
+@keyframes clock-pulse {
+  0%,
+  100% {
+    box-shadow: var(--shadow), 0 0 24px color-mix(in srgb, var(--accent-2), transparent 84%);
+  }
+
+  50% {
+    box-shadow: var(--shadow), 0 0 38px color-mix(in srgb, var(--accent-2), transparent 76%);
+  }
 }
 
 .profile-bar {
@@ -364,16 +426,46 @@ textarea:focus {
 }
 
 .group {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent), transparent 94%), transparent 34%),
+    var(--panel);
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 28px color-mix(in srgb, var(--accent), transparent 94%);
   backdrop-filter: blur(12px);
   overflow: hidden;
 }
 
+.group::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent), transparent 70%), transparent);
+  transform: translateX(-78%);
+  animation: panel-sweep 9s ease-in-out infinite;
+}
+
+@keyframes panel-sweep {
+  0%,
+  54%,
+  100% {
+    transform: translateX(-78%);
+  }
+
+  72% {
+    transform: translateX(78%);
+  }
+}
+
 .group h2 {
+  position: relative;
   margin: 0 0 11px;
   color: var(--accent);
   font-size: 0.92rem;
@@ -387,6 +479,7 @@ textarea:focus {
 }
 
 .link-card {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
@@ -396,15 +489,49 @@ textarea:focus {
   border-radius: 8px;
   padding: 11px;
   color: inherit;
-  background: rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.045)),
+    color-mix(in srgb, var(--panel-strong), transparent 38%);
   text-decoration: none;
-  box-shadow: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.link-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  opacity: 0;
+  background:
+    linear-gradient(110deg, transparent 0 28%, color-mix(in srgb, var(--accent), transparent 58%) 44%, transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent), transparent 74%), color-mix(in srgb, var(--accent-2), transparent 82%));
+  transform: translateX(-42%);
+  transition: opacity 150ms ease, transform 420ms ease;
+}
+
+.link-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .link-card:hover {
-  border-color: color-mix(in srgb, var(--accent), transparent 48%);
-  background: rgba(255, 255, 255, 0.11);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent), transparent 88%);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent), transparent 34%);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06)),
+    color-mix(in srgb, var(--panel-strong), transparent 26%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent), transparent 78%),
+    0 0 22px color-mix(in srgb, var(--accent), transparent 82%),
+    0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.link-card:hover::before {
+  opacity: 0.22;
+  transform: translateX(28%);
 }
 
 .link-content {
@@ -418,8 +545,11 @@ textarea:focus {
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-weight: 850;
+  font-size: 0.98rem;
+  font-weight: 650;
+  line-height: 1.2;
   color: var(--text);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent-2), transparent 84%);
 }
 
 .link-title span {
@@ -432,6 +562,7 @@ textarea:focus {
   flex: 0 0 18px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent), transparent 84%);
 }
 
 .link-note {
@@ -447,6 +578,10 @@ textarea:focus {
   min-height: 34px;
   padding: 0;
   color: var(--accent);
+  background: color-mix(in srgb, var(--panel-strong), black 18%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 14px color-mix(in srgb, var(--accent-2), transparent 88%);
 }
 
 .empty-category {
@@ -681,5 +816,6 @@ dialog::backdrop {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
   }
 }
