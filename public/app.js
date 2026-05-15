@@ -7,9 +7,10 @@ const state = {
   profiles: [],
   categories: [],
   links: [],
-  widgets: { clock: true, stats: true, quickNote: "" },
+  widgets: { clock: true, notes: [] },
   auth: { enabled: false, authenticated: true },
-  query: ""
+  query: "",
+  searchOpen: false
 };
 
 const elements = {
@@ -21,6 +22,8 @@ const elements = {
   empty: document.querySelector("#emptyState"),
   locked: document.querySelector("#lockedState"),
   search: document.querySelector("#searchInput"),
+  searchPanel: document.querySelector("#searchPanel"),
+  searchToggleButton: document.querySelector("#searchToggleButton"),
   addButton: document.querySelector("#addButton"),
   categoriesButton: document.querySelector("#categoriesButton"),
   settingsButton: document.querySelector("#settingsButton"),
@@ -31,9 +34,9 @@ const elements = {
   deleteProfileButton: document.querySelector("#deleteProfileButton"),
   themeSelect: document.querySelector("#themeSelect"),
   widgets: document.querySelector("#widgets"),
-  widgetClock: document.querySelector("#widgetClock"),
-  widgetStats: document.querySelector("#widgetStats"),
-  quickNoteInput: document.querySelector("#quickNoteInput"),
+  notesList: document.querySelector("#notesList"),
+  noteInput: document.querySelector("#noteInput"),
+  addNoteButton: document.querySelector("#addNoteButton"),
   setupDialog: document.querySelector("#setupDialog"),
   setupForm: document.querySelector("#setupForm"),
   setupTitle: document.querySelector("#setupTitle"),
@@ -94,7 +97,6 @@ function updateClock() {
   const now = new Date();
   const time = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(now);
   elements.time.textContent = time;
-  elements.widgetClock.textContent = time;
   elements.date.textContent = new Intl.DateTimeFormat("de-DE", {
     weekday: "long",
     day: "2-digit",
@@ -169,6 +171,7 @@ function render() {
   renderAdminState();
   renderProfiles();
   renderCategoryList();
+  renderSearch();
   renderWidgets();
   renderGroups();
 }
@@ -199,13 +202,53 @@ function renderProfiles() {
 }
 
 function renderWidgets() {
-  elements.widgets.hidden = !state.widgets.clock && !state.widgets.stats && !state.widgets.quickNote;
-  elements.widgets.querySelector('[data-widget="clock"]').hidden = !state.widgets.clock;
-  elements.widgets.querySelector('[data-widget="stats"]').hidden = !state.widgets.stats;
-  elements.widgets.querySelector('[data-widget="quickNote"]').hidden = state.widgets.quickNote === undefined;
-  elements.widgetStats.textContent = `${state.links.length}`;
-  elements.quickNoteInput.value = state.widgets.quickNote || "";
-  elements.quickNoteInput.disabled = !canEdit();
+  const notes = getNotes();
+  elements.widgets.hidden = false;
+  elements.noteInput.disabled = !canEdit();
+  elements.addNoteButton.disabled = !canEdit();
+  elements.notesList.replaceChildren(
+    ...(notes.length ? notes.map(createNoteCard) : [createEmptyNote()])
+  );
+}
+
+function renderSearch() {
+  const open = state.searchOpen || Boolean(state.query);
+  elements.searchPanel.hidden = !open;
+  elements.searchToggleButton.setAttribute("aria-expanded", String(open));
+  elements.searchToggleButton.textContent = open ? "Suche ausblenden" : "Suche";
+}
+
+function getNotes() {
+  const notes = Array.isArray(state.widgets.notes) ? state.widgets.notes : [];
+  if (!notes.length && state.widgets.quickNote) {
+    return [{ id: createId(), text: state.widgets.quickNote }];
+  }
+  return notes;
+}
+
+function createNoteCard(note) {
+  const card = document.createElement("div");
+  card.className = "note-card";
+  const text = document.createElement("p");
+  text.textContent = note.text;
+  const remove = document.createElement("button");
+  remove.className = "icon-button admin-only";
+  remove.type = "button";
+  remove.textContent = "x";
+  remove.ariaLabel = "Notiz löschen";
+  remove.addEventListener("click", async () => {
+    state.widgets.notes = getNotes().filter((candidate) => candidate.id !== note.id);
+    await saveData("Notiz gelöscht");
+  });
+  card.append(text, remove);
+  return card;
+}
+
+function createEmptyNote() {
+  const empty = document.createElement("p");
+  empty.className = "empty-note";
+  empty.textContent = "Noch keine Notizen";
+  return empty;
 }
 
 function renderCategoryList() {
@@ -221,7 +264,7 @@ function renderCategoryList() {
 function renderGroups() {
   const query = state.query.trim().toLowerCase();
   const links = state.links.filter((link) => {
-    const haystack = `${link.title} ${link.url} ${link.category} ${link.note}`.toLowerCase();
+    const haystack = `${link.title} ${link.category} ${link.note}`.toLowerCase();
     return !query || haystack.includes(query);
   });
   const grouped = links.reduce((groups, link) => {
@@ -301,10 +344,13 @@ function createLinkCard(link) {
   titleText.textContent = link.title;
   title.append(icon, titleText);
 
-  const meta = document.createElement("p");
-  meta.className = "link-meta";
-  meta.textContent = link.note || link.url;
-  anchor.append(title, meta);
+  anchor.append(title);
+  if (link.note) {
+    const note = document.createElement("p");
+    note.className = "link-note";
+    note.textContent = link.note;
+    anchor.append(note);
+  }
   anchor.className = "link-content";
 
   const edit = document.createElement("button");
@@ -568,6 +614,16 @@ elements.search.addEventListener("input", (event) => {
   state.query = event.target.value;
   renderGroups();
 });
+elements.searchToggleButton.addEventListener("click", () => {
+  state.searchOpen = !state.searchOpen;
+  if (!state.searchOpen) {
+    state.query = "";
+    elements.search.value = "";
+    renderGroups();
+  }
+  renderSearch();
+  if (state.searchOpen) elements.search.focus();
+});
 elements.addButton.addEventListener("click", () => openLinkDialog());
 elements.categoriesButton.addEventListener("click", openCategoriesDialog);
 elements.settingsButton.addEventListener("click", openSettingsDialog);
@@ -591,8 +647,13 @@ elements.themeSelect.addEventListener("change", async (event) => {
   state.theme = event.target.value;
   await saveData("Theme gespeichert");
 });
-elements.quickNoteInput.addEventListener("change", async (event) => {
-  state.widgets.quickNote = event.target.value;
+elements.addNoteButton.addEventListener("click", async () => {
+  if (!canEdit()) return openAdminDialog();
+  const text = elements.noteInput.value.trim();
+  if (!text) return;
+  state.widgets.notes = [...getNotes(), { id: createId(), text }];
+  delete state.widgets.quickNote;
+  elements.noteInput.value = "";
   await saveData("Notiz gespeichert");
 });
 elements.runImportButton.addEventListener("click", () => runImport().catch((error) => showToast(error.message)));

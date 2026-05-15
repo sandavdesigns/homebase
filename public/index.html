@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=ui2" />
+    <link rel="stylesheet" href="/styles.css?v=tidy1" />
   </head>
   <body>
     <main class="shell">
@@ -16,6 +16,7 @@
           <p id="pageSubtitle"></p>
         </div>
         <div class="clock" aria-live="polite">
+          <span class="clock-label">Jetzt</span>
           <span id="timeLabel">--:--</span>
         </div>
       </section>
@@ -40,7 +41,8 @@
       </section>
 
       <section class="command-row" aria-label="Startseitenwerkzeuge">
-        <label class="search">
+        <button id="searchToggleButton" type="button" aria-expanded="false">Suche</button>
+        <label class="search" id="searchPanel" hidden>
           <span>Suchen</span>
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
         </label>
@@ -52,17 +54,13 @@
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
-        <article class="widget" data-widget="clock">
-          <p>Uhr</p>
-          <strong id="widgetClock">--:--</strong>
-        </article>
-        <article class="widget" data-widget="stats">
-          <p>Links</p>
-          <strong id="widgetStats">0</strong>
-        </article>
-        <article class="widget quick-note" data-widget="quickNote">
-          <label for="quickNoteInput">Notiz</label>
-          <textarea id="quickNoteInput" rows="2" placeholder="Schnelle Notiz"></textarea>
+        <article class="widget notes-widget" data-widget="notes">
+          <header class="widget-header">
+            <p>Notizen</p>
+            <button id="addNoteButton" class="admin-only" type="button">+ Notiz</button>
+          </header>
+          <div id="notesList" class="notes-list"></div>
+          <textarea id="noteInput" rows="2" placeholder="Neue Notiz"></textarea>
         </article>
       </section>
 
@@ -243,6 +241,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=ui2"></script>
+    <script src="/app.js?v=tidy1"></script>
   </body>
 </html>

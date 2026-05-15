@@ -5,13 +5,13 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 ## Funktionen
 
 - Browserbasierte Pflege von Links, Kategorien, Profilen, Notizen, Titel und Untertitel
-- Suche ueber Linktitel, URL, Kategorie und Notiz
+- Einklappbare Suche ueber Linktitel, Kategorie und Notiz
 - Automatisch gruppierte Kategorien mit alphabetischer Sortierung
 - JSON-Import und JSON-Export der aktuellen Konfiguration
 - Automatischer Favicon-Abruf mit lokalem Cache
 - Themes: Retro, Dark, Light und Terminal
 - Optionaler Admin-Modus mit Passwortschutz fuer Bearbeitung
-- Widgets fuer Uhr, Linkanzahl und schnelle Notiz
+- Widgets fuer Uhr und mehrere Notizen
 
 ## Erster Start
 
@@ -208,8 +208,7 @@ Diese Version enthaelt diese Widgets:
 
 - Datum
 - Uhrzeit
-- Linkanzahl im aktiven Profil
-- Schnelle Notiz
+- Mehrere Notizen
 
 ## Updates
 
@@ -245,4 +244,4 @@ Nach dem Update:
 - `Titel` aendert Titel und Untertitel.
 - `Export` laedt die aktuelle JSON-Konfiguration herunter.
 
-Kategorien und Links werden alphabetisch angezeigt.
+Kategorien und Links werden alphabetisch angezeigt. Linkkarten zeigen Titel, Favicon und optionale Notiz; die URL bleibt als Klickziel hinterlegt, wird aber nicht extra angezeigt.

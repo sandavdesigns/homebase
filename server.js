@@ -32,8 +32,7 @@ const defaultData = {
   activeProfileId: "default",
   widgets: {
     clock: true,
-    stats: true,
-    quickNote: ""
+    notes: []
   },
   admin: {
     enabled: Boolean(ADMIN_PASSWORD)
@@ -153,10 +152,21 @@ function normalizeTheme(theme) {
 }
 
 function normalizeWidgets(widgets) {
+  const legacyNote = String(widgets?.quickNote || "").trim();
+  const notes = Array.isArray(widgets?.notes)
+    ? widgets.notes
+    : legacyNote
+      ? [{ id: crypto.randomUUID(), text: legacyNote }]
+      : [];
+
   return {
     clock: widgets?.clock !== false,
-    stats: widgets?.stats !== false,
-    quickNote: String(widgets?.quickNote || "").slice(0, 500)
+    notes: notes
+      .map((note) => ({
+        id: String(note.id || crypto.randomUUID()),
+        text: String(note.text || "").trim().slice(0, 500)
+      }))
+      .filter((note) => note.text)
   };
 }
 
