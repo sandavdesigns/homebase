@@ -10,105 +10,106 @@ const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 const defaultData = {
+  schemaVersion: 2,
   title: "Davids Startseite",
-  subtitle: "Alles Wichtige an einem Ort",
+  subtitle: "Neon-Kommandozentrale fuer Alltag, Server und Shop",
   links: [
     {
       id: crypto.randomUUID(),
       title: "AdGuard",
       url: "http://192.168.1.20/",
-      category: "Dienste",
+      category: "Netzwerk",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Immich",
       url: "https://photo.sandav.de/",
-      category: "Dienste",
+      category: "Medien",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Nginx",
       url: "http://192.168.1.19:81/",
-      category: "Dienste",
+      category: "Server",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Home Assistant",
       url: "http://192.168.1.5:8123/",
-      category: "Dienste",
+      category: "Smart Home",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Homematic",
       url: "http://192.168.1.4/login.htm",
-      category: "Dienste",
+      category: "Smart Home",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Valetudo",
       url: "http://192.168.1.186/",
-      category: "Dienste",
+      category: "Smart Home",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Homeserver (DS214)",
       url: "http://192.168.1.180:5000/",
-      category: "Dienste",
+      category: "Server",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Docker",
       url: "https://192.168.1.27:9443/",
-      category: "Dienste",
+      category: "Server",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "iDRAC pve-node01",
       url: "https://192.168.1.162/",
-      category: "Dienste",
+      category: "Server",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "iDRAC pve-node02",
       url: "https://192.168.1.146/",
-      category: "Dienste",
+      category: "Server",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "PVE Node01",
       url: "https://192.168.1.15:8006/",
-      category: "Dienste",
+      category: "Server",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "FritzBox 7530",
       url: "http://192.168.1.2/",
-      category: "Dienste",
+      category: "Netzwerk",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "FritzBox 7590",
       url: "http://192.168.1.1/",
-      category: "Dienste",
+      category: "Netzwerk",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Mikrotik",
       url: "http://192.168.1.7/",
-      category: "Dienste",
+      category: "Netzwerk",
       note: ""
     },
     {
@@ -157,21 +158,21 @@ const defaultData = {
       id: crypto.randomUUID(),
       title: "SVG-3D Tool",
       url: "http://192.168.1.27:4173/",
-      category: "Tools",
+      category: "Werkstatt",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "SD-Lernsystem",
       url: "http://192.168.1.27:8080/",
-      category: "Tools",
+      category: "Werkstatt",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "Vaultwarden",
       url: "https://vaultwarden.sandav.de/",
-      category: "Tools",
+      category: "Sicherheit",
       note: ""
     }
   ]
@@ -195,12 +196,17 @@ function ensureDataFile() {
 
 function readData() {
   ensureDataFile();
-  return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  const migrated = migrateData(data);
+  if (JSON.stringify(migrated) !== JSON.stringify(data)) {
+    fs.writeFileSync(DATA_FILE, `${JSON.stringify(migrated, null, 2)}\n`);
+  }
+  return migrated;
 }
 
 function writeData(data) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const safeData = normalizeData(data);
+  const safeData = normalizeData({ ...data, schemaVersion: data.schemaVersion || 2 });
   fs.writeFileSync(DATA_FILE, `${JSON.stringify(safeData, null, 2)}\n`);
   return safeData;
 }
@@ -211,6 +217,7 @@ function normalizeData(data) {
   const links = Array.isArray(data.links) ? data.links : [];
 
   return {
+    schemaVersion: Number(data.schemaVersion || 1),
     title,
     subtitle,
     links: links
@@ -223,6 +230,41 @@ function normalizeData(data) {
       }))
       .filter((link) => link.url)
   };
+}
+
+function migrateData(data) {
+  const normalized = normalizeData(data);
+  if (normalized.schemaVersion >= 2) return normalized;
+
+  const categoriesByTitle = new Map([
+    ["AdGuard", "Netzwerk"],
+    ["FritzBox 7530", "Netzwerk"],
+    ["FritzBox 7590", "Netzwerk"],
+    ["Mikrotik", "Netzwerk"],
+    ["Home Assistant", "Smart Home"],
+    ["Homematic", "Smart Home"],
+    ["Valetudo", "Smart Home"],
+    ["Homeserver (DS214)", "Server"],
+    ["Docker", "Server"],
+    ["iDRAC pve-node01", "Server"],
+    ["iDRAC pve-node02", "Server"],
+    ["PVE Node01", "Server"],
+    ["Nginx", "Server"],
+    ["Immich", "Medien"],
+    ["YouTube", "Medien"],
+    ["SVG-3D Tool", "Werkstatt"],
+    ["SD-Lernsystem", "Werkstatt"],
+    ["Vaultwarden", "Sicherheit"]
+  ]);
+
+  normalized.schemaVersion = 2;
+  normalized.subtitle = normalized.subtitle || defaultData.subtitle;
+  normalized.links = normalized.links.map((link) => ({
+    ...link,
+    category: categoriesByTitle.get(link.title) || link.category
+  }));
+
+  return normalized;
 }
 
 function normalizeUrl(url) {
@@ -285,7 +327,7 @@ function serveStatic(req, res) {
     const ext = path.extname(filePath);
     res.writeHead(200, {
       "Content-Type": mimeTypes[ext] || "application/octet-stream",
-      "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=3600"
+      "Cache-Control": "no-store"
     });
     res.end(content);
   });

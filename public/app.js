@@ -5,6 +5,16 @@ const state = {
   query: ""
 };
 
+const preferredCategoryOrder = [
+  "Business",
+  "Server",
+  "Netzwerk",
+  "Smart Home",
+  "Sicherheit",
+  "Werkstatt",
+  "Medien"
+];
+
 const elements = {
   title: document.querySelector("#pageTitle"),
   subtitle: document.querySelector("#pageSubtitle"),
@@ -60,6 +70,7 @@ async function saveData(message = "Gespeichert") {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      schemaVersion: state.schemaVersion || 2,
       title: state.title,
       subtitle: state.subtitle,
       links: state.links
@@ -85,7 +96,7 @@ function render() {
 }
 
 function renderCategoryList() {
-  const categories = [...new Set(state.links.map((link) => link.category).filter(Boolean))].sort();
+  const categories = [...new Set(state.links.map((link) => link.category).filter(Boolean))].sort(compareCategories);
   elements.categoryList.replaceChildren(
     ...categories.map((category) => {
       const option = document.createElement("option");
@@ -109,7 +120,7 @@ function renderGroups() {
   }, new Map());
 
   elements.groups.replaceChildren(
-    ...[...grouped.entries()].sort(([a], [b]) => a.localeCompare(b, "de")).map(([category, groupLinks]) => {
+    ...[...grouped.entries()].sort(([a], [b]) => compareCategories(a, b)).map(([category, groupLinks]) => {
       const section = document.createElement("article");
       section.className = "group";
 
@@ -126,6 +137,15 @@ function renderGroups() {
   );
 
   elements.empty.hidden = links.length > 0;
+}
+
+function compareCategories(a, b) {
+  const aIndex = preferredCategoryOrder.indexOf(a);
+  const bIndex = preferredCategoryOrder.indexOf(b);
+  if (aIndex >= 0 || bIndex >= 0) {
+    return (aIndex >= 0 ? aIndex : 999) - (bIndex >= 0 ? bIndex : 999);
+  }
+  return a.localeCompare(b, "de");
 }
 
 function createLinkCard(link) {
