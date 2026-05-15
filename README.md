@@ -42,11 +42,14 @@ Dann bleibt die App intern auf `3000`, ist aber extern unter `http://<server-ip>
 ## Daten
 
 Die Links werden im Docker-Volume `homebase_data` gespeichert. Den Volume-Namen kannst du mit `HOMEBASE_VOLUME_NAME` ändern.
+Favicons werden automatisch geholt und im selben Volume unter `favicons/` gecacht.
 
 ## Im Browser pflegen
 
 - `+ Link` legt neue Links an.
 - `...` an einem Link bearbeitet oder löscht ihn.
-- `Kategorien` verwaltet Gruppen, Reihenfolge und Umbenennungen zentral.
+- `Kategorien` verwaltet Gruppen und Umbenennungen zentral.
 - `Titel` ändert Titel und Untertitel.
 - `Export` lädt die aktuelle JSON-Konfiguration herunter.
+
+Kategorien und Links werden alphabetisch angezeigt.

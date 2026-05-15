@@ -6,16 +6,6 @@ const state = {
   query: ""
 };
 
-const preferredCategoryOrder = [
-  "Business",
-  "Server",
-  "Netzwerk",
-  "Smart Home",
-  "Sicherheit",
-  "Werkstatt",
-  "Medien"
-];
-
 const elements = {
   title: document.querySelector("#pageTitle"),
   subtitle: document.querySelector("#pageSubtitle"),
@@ -161,21 +151,13 @@ function renderGroups() {
 }
 
 function compareCategories(a, b) {
-  const orderedNames = getCategoryNames();
-  const aIndex = orderedNames.indexOf(a);
-  const bIndex = orderedNames.indexOf(b);
-  if (aIndex >= 0 || bIndex >= 0) {
-    return (aIndex >= 0 ? aIndex : 999) - (bIndex >= 0 ? bIndex : 999);
-  }
-  return a.localeCompare(b, "de");
+  return a.localeCompare(b, "de", { sensitivity: "base" });
 }
 
 function getCategoryNames() {
   const names = [];
   const seen = new Set();
-  const source = state.categories.length
-    ? state.categories
-    : preferredCategoryOrder.map((name) => ({ name }));
+  const source = state.categories.length ? state.categories : [];
 
   for (const category of source) {
     const name = String(category.name || "").trim();
@@ -192,7 +174,7 @@ function getCategoryNames() {
     }
   }
 
-  return names;
+  return names.sort(compareCategories);
 }
 
 function createLinkCard(link) {
@@ -206,7 +188,17 @@ function createLinkCard(link) {
 
   const title = document.createElement("p");
   title.className = "link-title";
-  title.textContent = link.title;
+
+  const icon = document.createElement("img");
+  icon.className = "favicon";
+  icon.alt = "";
+  icon.loading = "lazy";
+  icon.decoding = "async";
+  icon.src = `/api/favicon?url=${encodeURIComponent(link.url)}`;
+
+  const titleText = document.createElement("span");
+  titleText.textContent = link.title;
+  title.append(icon, titleText);
 
   const meta = document.createElement("p");
   meta.className = "link-meta";
@@ -260,7 +252,7 @@ function openCategoriesDialog() {
 
 function renderCategoryEditor() {
   elements.categoryEditor.replaceChildren(
-    ...categoryDrafts.map((category, index) => {
+    ...categoryDrafts.sort((a, b) => compareCategories(a.name, b.name)).map((category, index) => {
       const row = document.createElement("div");
       row.className = "category-row";
 
@@ -272,41 +264,19 @@ function renderCategoryEditor() {
         category.name = event.target.value;
       });
 
-      const up = document.createElement("button");
-      up.type = "button";
-      up.textContent = "↑";
-      up.ariaLabel = `${category.name || "Kategorie"} nach oben`;
-      up.disabled = index === 0;
-      up.addEventListener("click", () => moveCategory(index, -1));
-
-      const down = document.createElement("button");
-      down.type = "button";
-      down.textContent = "↓";
-      down.ariaLabel = `${category.name || "Kategorie"} nach unten`;
-      down.disabled = index === categoryDrafts.length - 1;
-      down.addEventListener("click", () => moveCategory(index, 1));
-
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "danger subtle-danger";
       remove.textContent = "Löschen";
       remove.addEventListener("click", () => {
-        categoryDrafts.splice(index, 1);
+        categoryDrafts = categoryDrafts.filter((candidate) => candidate.id !== category.id);
         renderCategoryEditor();
       });
 
-      row.append(input, up, down, remove);
+      row.append(input, remove);
       return row;
     })
   );
-}
-
-function moveCategory(index, offset) {
-  const target = index + offset;
-  if (target < 0 || target >= categoryDrafts.length) return;
-  const [category] = categoryDrafts.splice(index, 1);
-  categoryDrafts.splice(target, 0, category);
-  renderCategoryEditor();
 }
 
 function addCategory() {
@@ -351,7 +321,7 @@ async function saveCategories() {
     nextCategories.push({ id: createId(), name: "Links" });
   }
 
-  state.categories = nextCategories.map(({ id, name }) => ({ id, name }));
+  state.categories = nextCategories.map(({ id, name }) => ({ id, name })).sort((a, b) => compareCategories(a.name, b.name));
   await saveData("Kategorien gespeichert");
   elements.categoriesDialog.close();
 }

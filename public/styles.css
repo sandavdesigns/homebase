@@ -276,10 +276,22 @@ input:focus {
 }
 
 .link-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 4px;
   font-weight: 800;
   color: #fff;
   text-shadow: 0 0 10px rgba(255, 61, 242, 0.22);
+}
+
+.favicon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 10px rgba(38, 244, 255, 0.16);
 }
 
 .link-meta {
@@ -375,7 +387,7 @@ dialog::backdrop {
 
 .category-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px 42px auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -444,7 +456,7 @@ dialog::backdrop {
   }
 
   .category-row {
-    grid-template-columns: 1fr 42px 42px;
+    grid-template-columns: 1fr;
   }
 
   .category-row .danger {
