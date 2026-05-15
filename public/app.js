@@ -469,7 +469,7 @@ function getStatusForLink(link) {
     const itemOrigin = getUrlOrigin(item.url);
     if (linkOrigin && itemOrigin && linkOrigin === itemOrigin) return true;
     const itemName = normalizeMatchText(item.name);
-    return itemName && title && (itemName === title || title.includes(itemName) || itemName.includes(title));
+    return itemName && title && itemName === title;
   });
 }
 

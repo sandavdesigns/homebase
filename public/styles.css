@@ -798,10 +798,10 @@ body[data-theme="time-circuit"] .link-title {
 .link-status-panel {
   display: grid;
   gap: 6px;
-  margin: 8px 0 0 26px;
+  margin: 8px 0 0;
   border: 1px solid color-mix(in srgb, var(--service-glow, var(--accent)), transparent 68%);
   border-radius: 8px;
-  padding: 7px 8px;
+  padding: 8px 9px;
   background: color-mix(in srgb, var(--service-glow, var(--accent)), transparent 91%);
 }
 
@@ -826,8 +826,8 @@ body[data-theme="time-circuit"] .link-title {
 }
 
 .link-status-metrics {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
   gap: 5px;
 }
 
@@ -838,6 +838,7 @@ body[data-theme="time-circuit"] .link-title {
   background: rgba(0, 0, 0, 0.16);
   font-size: 0.74rem;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .edit-link {
