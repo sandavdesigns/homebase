@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=favicon1" />
+    <link rel="stylesheet" href="/styles.css?v=ui2" />
   </head>
   <body>
     <main class="shell">
       <section class="topbar">
         <div>
           <p class="kicker" id="dateLabel">Heute</p>
-          <h1 id="pageTitle">Startseite</h1>
+          <h1 id="pageTitle">Homebase</h1>
           <p id="pageSubtitle"></p>
         </div>
         <div class="clock" aria-live="polite">
@@ -20,15 +20,55 @@
         </div>
       </section>
 
+      <section class="profile-bar" aria-label="Profil und Verwaltung">
+        <label class="compact-field">
+          <span>Profil</span>
+          <select id="profileSelect"></select>
+        </label>
+        <button id="newProfileButton" type="button">+ Profil</button>
+        <button id="deleteProfileButton" class="danger" type="button">Profil löschen</button>
+        <label class="compact-field">
+          <span>Theme</span>
+          <select id="themeSelect">
+            <option value="retro">Retro</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="terminal">Terminal</option>
+          </select>
+        </label>
+        <button id="adminButton" type="button" aria-pressed="false">Admin gesperrt</button>
+      </section>
+
       <section class="command-row" aria-label="Startseitenwerkzeuge">
         <label class="search">
           <span>Suchen</span>
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
         </label>
-        <button class="primary" id="addButton" type="button">+ Link</button>
-        <button id="categoriesButton" type="button">Kategorien</button>
-        <button id="settingsButton" type="button">Titel</button>
-        <a class="button" href="/api/homebase/export">Export</a>
+        <button class="primary admin-only" id="addButton" type="button">+ Link</button>
+        <button class="admin-only" id="categoriesButton" type="button">Kategorien</button>
+        <button class="admin-only" id="settingsButton" type="button">Titel</button>
+        <button class="admin-only" id="importButton" type="button">Import</button>
+        <a class="button admin-only" href="/api/homebase/export">Export</a>
+      </section>
+
+      <section id="widgets" class="widgets" aria-label="Widgets">
+        <article class="widget" data-widget="clock">
+          <p>Uhr</p>
+          <strong id="widgetClock">--:--</strong>
+        </article>
+        <article class="widget" data-widget="stats">
+          <p>Links</p>
+          <strong id="widgetStats">0</strong>
+        </article>
+        <article class="widget quick-note" data-widget="quickNote">
+          <label for="quickNoteInput">Notiz</label>
+          <textarea id="quickNoteInput" rows="2" placeholder="Schnelle Notiz"></textarea>
+        </article>
+      </section>
+
+      <section id="lockedState" class="empty" hidden>
+        <h2>Admin gesperrt</h2>
+        <p>Links sind sichtbar. Änderungen, Import und Profilverwaltung werden nach dem Entsperren aktiv.</p>
       </section>
 
       <section id="emptyState" class="empty" hidden>
@@ -38,6 +78,32 @@
 
       <section id="groups" class="groups" aria-label="Links"></section>
     </main>
+
+    <dialog id="setupDialog">
+      <form method="dialog" class="dialog-card" id="setupForm">
+        <header>
+          <h2>Homebase einrichten</h2>
+        </header>
+        <label>
+          Seitentitel
+          <input id="setupTitle" required maxlength="80" value="Homebase" />
+        </label>
+        <label>
+          Erstes Profil
+          <input id="setupProfileName" required maxlength="60" value="Privat" />
+        </label>
+        <label>
+          Admin-Passwort
+          <input id="setupPassword" type="password" required minlength="8" autocomplete="new-password" />
+        </label>
+        <footer>
+          <span></span>
+          <span></span>
+          <span></span>
+          <button class="primary" id="completeSetupButton" value="default" type="button">Einrichten</button>
+        </footer>
+      </form>
+    </dialog>
 
     <dialog id="editorDialog">
       <form method="dialog" class="dialog-card" id="linkForm">
@@ -54,6 +120,10 @@
           URL
           <input id="linkUrl" required placeholder="https://..." />
         </label>
+        <div class="link-test-row">
+          <button id="testLinkButton" type="button">Link testen</button>
+          <span id="linkStatus" class="status-pill is-idle">Nicht getestet</span>
+        </div>
         <label>
           Kategorie
           <input id="linkCategory" required maxlength="40" list="categoryList" />
@@ -111,7 +181,68 @@
       </form>
     </dialog>
 
+    <dialog id="profileDialog">
+      <form method="dialog" class="dialog-card" id="profileForm">
+        <header>
+          <h2>Profil erstellen</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <label>
+          Name
+          <input id="profileName" required maxlength="60" />
+        </label>
+        <footer>
+          <span></span>
+          <span></span>
+          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
+          <button class="primary" id="saveProfileButton" value="default" type="button">Erstellen</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="importDialog">
+      <form method="dialog" class="dialog-card" id="importForm">
+        <header>
+          <h2>JSON importieren</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <label>
+          Datei
+          <input id="importFile" type="file" accept="application/json,.json" />
+        </label>
+        <label>
+          JSON
+          <textarea id="importText" rows="8" placeholder='{"profiles":[...]}'></textarea>
+        </label>
+        <footer>
+          <span></span>
+          <span></span>
+          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
+          <button class="primary" id="runImportButton" value="default" type="button">Importieren</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="adminDialog">
+      <form method="dialog" class="dialog-card" id="adminForm">
+        <header>
+          <h2 id="adminDialogTitle">Admin entsperren</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <label id="adminPasswordLabel">
+          Passwort
+          <input id="adminPassword" type="password" autocomplete="current-password" />
+        </label>
+        <footer>
+          <span></span>
+          <span></span>
+          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
+          <button class="primary" id="adminSubmitButton" value="default" type="button">Entsperren</button>
+        </footer>
+      </form>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=favicon1"></script>
+    <script src="/app.js?v=ui2"></script>
   </body>
 </html>

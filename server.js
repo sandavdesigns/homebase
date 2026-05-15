@@ -10,6 +10,8 @@ const DATA_DIR = process.env.DATA_DIR || "/data";
 const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const FAVICON_DIR = path.join(DATA_DIR, "favicons");
 const PUBLIC_DIR = path.join(__dirname, "public");
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const sessions = new Map();
 
 const defaultCategories = [
   "Business",
@@ -22,171 +24,26 @@ const defaultCategories = [
 ].map((name) => ({ id: crypto.randomUUID(), name }));
 
 const defaultData = {
-  schemaVersion: 3,
-  title: "Davids Startseite",
-  subtitle: "Neon-Kommandozentrale fuer Alltag, Server und Shop",
-  categories: defaultCategories,
-  links: [
+  schemaVersion: 4,
+  setupComplete: false,
+  title: "Homebase",
+  subtitle: "Deine Startseite fuer Links, Profile und kleine Widgets",
+  theme: "retro",
+  activeProfileId: "default",
+  widgets: {
+    clock: true,
+    stats: true,
+    quickNote: ""
+  },
+  admin: {
+    enabled: Boolean(ADMIN_PASSWORD)
+  },
+  profiles: [
     {
-      id: crypto.randomUUID(),
-      title: "AdGuard",
-      url: "http://192.168.1.20/",
-      category: "Netzwerk",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Immich",
-      url: "https://photo.sandav.de/",
-      category: "Medien",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Nginx",
-      url: "http://192.168.1.19:81/",
-      category: "Server",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Home Assistant",
-      url: "http://192.168.1.5:8123/",
-      category: "Smart Home",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Homematic",
-      url: "http://192.168.1.4/login.htm",
-      category: "Smart Home",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Valetudo",
-      url: "http://192.168.1.186/",
-      category: "Smart Home",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Homeserver (DS214)",
-      url: "http://192.168.1.180:5000/",
-      category: "Server",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Docker",
-      url: "https://192.168.1.27:9443/",
-      category: "Server",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "iDRAC pve-node01",
-      url: "https://192.168.1.162/",
-      category: "Server",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "iDRAC pve-node02",
-      url: "https://192.168.1.146/",
-      category: "Server",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "PVE Node01",
-      url: "https://192.168.1.15:8006/",
-      category: "Server",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "FritzBox 7530",
-      url: "http://192.168.1.2/",
-      category: "Netzwerk",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "FritzBox 7590",
-      url: "http://192.168.1.1/",
-      category: "Netzwerk",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Mikrotik",
-      url: "http://192.168.1.7/",
-      category: "Netzwerk",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Ebay",
-      url: "https://www.ebay.de/sh/ovw",
-      category: "Business",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Etsy",
-      url: "https://www.etsy.com/de/your/shops/me/dashboard?ref=hdr-mcpa",
-      category: "Business",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Kasuwa",
-      url: "https://www.kasuwa.de/shop/sandavdesigns",
-      category: "Business",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "SandavDesigns",
-      url: "https://sandavdesigns.de/",
-      category: "Business",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Billbee",
-      url: "https://app.billbee.io/app_v2/",
-      category: "Business",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "YouTube",
-      url: "https://youtube.com/",
-      category: "Medien",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "SVG-3D Tool",
-      url: "http://192.168.1.27:4173/",
-      category: "Werkstatt",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "SD-Lernsystem",
-      url: "http://192.168.1.27:8080/",
-      category: "Werkstatt",
-      note: ""
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Vaultwarden",
-      url: "https://vaultwarden.sandav.de/",
-      category: "Sicherheit",
-      note: ""
+      id: "default",
+      name: "Privat",
+      categories: [{ id: crypto.randomUUID(), name: "Links" }],
+      links: []
     }
   ]
 };
@@ -220,7 +77,15 @@ function readData() {
 
 function writeData(data) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const safeData = normalizeData({ ...data, schemaVersion: data.schemaVersion || 3 });
+  const existing = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) : {};
+  const safeData = normalizeData({
+    ...data,
+    admin: {
+      ...existing.admin,
+      ...data.admin
+    },
+    schemaVersion: data.schemaVersion || 4
+  });
   fs.writeFileSync(DATA_FILE, `${JSON.stringify(safeData, null, 2)}\n`);
   return safeData;
 }
@@ -228,7 +93,43 @@ function writeData(data) {
 function normalizeData(data) {
   const title = String(data.title || "Startseite").slice(0, 80);
   const subtitle = String(data.subtitle || "").slice(0, 140);
-  const links = Array.isArray(data.links) ? data.links : [];
+  const rawProfiles = Array.isArray(data.profiles) && data.profiles.length
+    ? data.profiles
+    : [
+        {
+          id: data.activeProfileId || "default",
+          name: "Start",
+          categories: data.categories,
+          links: data.links
+        }
+      ];
+  const profiles = rawProfiles.map(normalizeProfile).filter((profile) => profile.links.length || profile.categories.length);
+  if (!profiles.length) profiles.push(normalizeProfile(defaultData.profiles[0]));
+  const activeProfileId = profiles.some((profile) => profile.id === data.activeProfileId)
+    ? String(data.activeProfileId)
+    : profiles[0].id;
+  const activeProfile = profiles.find((profile) => profile.id === activeProfileId) || profiles[0];
+
+  return {
+    schemaVersion: Number(data.schemaVersion || 1),
+    setupComplete: data.setupComplete !== false,
+    title,
+    subtitle,
+    theme: normalizeTheme(data.theme),
+    activeProfileId,
+    widgets: normalizeWidgets(data.widgets),
+    admin: {
+      enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash),
+      passwordHash: String(data.admin?.passwordHash || "")
+    },
+    profiles,
+    categories: activeProfile.categories,
+    links: activeProfile.links
+  };
+}
+
+function normalizeProfile(profile) {
+  const links = Array.isArray(profile.links) ? profile.links : [];
   const normalizedLinks = links
     .map((link) => ({
       id: String(link.id || crypto.randomUUID()),
@@ -240,11 +141,22 @@ function normalizeData(data) {
     .filter((link) => link.url);
 
   return {
-    schemaVersion: Number(data.schemaVersion || 1),
-    title,
-    subtitle,
-    categories: normalizeCategories(data.categories, normalizedLinks),
+    id: String(profile.id || crypto.randomUUID()),
+    name: String(profile.name || "Start").slice(0, 50),
+    categories: normalizeCategories(profile.categories, normalizedLinks),
     links: normalizedLinks
+  };
+}
+
+function normalizeTheme(theme) {
+  return ["retro", "dark", "light", "terminal"].includes(theme) ? theme : "retro";
+}
+
+function normalizeWidgets(widgets) {
+  return {
+    clock: widgets?.clock !== false,
+    stats: widgets?.stats !== false,
+    quickNote: String(widgets?.quickNote || "").slice(0, 500)
   };
 }
 
@@ -304,9 +216,12 @@ function migrateData(data) {
     }));
   }
 
-  normalized.schemaVersion = 3;
+  normalized.schemaVersion = 4;
   normalized.subtitle = normalized.subtitle || defaultData.subtitle;
-  normalized.categories = normalizeCategories(originalVersion < 2 ? [] : normalized.categories, normalized.links);
+  const activeProfile = normalized.profiles.find((profile) => profile.id === normalized.activeProfileId) || normalized.profiles[0];
+  activeProfile.categories = normalizeCategories(originalVersion < 2 ? [] : activeProfile.categories, activeProfile.links);
+  normalized.categories = activeProfile.categories;
+  normalized.links = activeProfile.links;
 
   return normalized;
 }
@@ -326,6 +241,76 @@ function sendJson(res, status, payload) {
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function parseCookies(req) {
+  return Object.fromEntries(
+    String(req.headers.cookie || "")
+      .split(";")
+      .map((cookie) => cookie.trim().split("="))
+      .filter(([key, value]) => key && value)
+  );
+}
+
+function isAuthed(req) {
+  const data = readDataWithoutMigration();
+  if (!ADMIN_PASSWORD && !data.admin?.passwordHash) return true;
+  const sessionId = parseCookies(req).homebase_session;
+  const session = sessionId ? sessions.get(sessionId) : null;
+  if (!session) return false;
+  if (session.expiresAt < Date.now()) {
+    sessions.delete(sessionId);
+    return false;
+  }
+  return true;
+}
+
+function requireAuth(req, res) {
+  if (isAuthed(req)) return true;
+  sendJson(res, 401, { error: "Admin login required" });
+  return false;
+}
+
+function readDataWithoutMigration() {
+  ensureDataFile();
+  return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+}
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (ADMIN_PASSWORD && password === ADMIN_PASSWORD) return true;
+  if (!storedHash) return false;
+  const [salt, expectedHash] = storedHash.split(":");
+  if (!salt || !expectedHash) return false;
+  const actualHash = hashPassword(password, salt).split(":")[1];
+  return crypto.timingSafeEqual(Buffer.from(actualHash, "hex"), Buffer.from(expectedHash, "hex"));
+}
+
+function setSessionCookie(res, sessionId) {
+  res.setHeader("Set-Cookie", `homebase_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", "homebase_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+}
+
+function toPublicData(data, req) {
+  const { passwordHash, ...publicAdmin } = data.admin || {};
+  return {
+    ...data,
+    admin: {
+      ...publicAdmin,
+      enabled: Boolean(ADMIN_PASSWORD || passwordHash)
+    },
+    auth: {
+      enabled: Boolean(ADMIN_PASSWORD || passwordHash),
+      authenticated: isAuthed(req)
+    }
+  };
 }
 
 function sendFaviconFallback(res) {
@@ -468,6 +453,37 @@ function requestBuffer(targetUrl, { accept, limit }) {
   });
 }
 
+function requestHead(targetUrl) {
+  return new Promise((resolve, reject) => {
+    const parsed = parseHttpUrl(targetUrl);
+    if (!parsed) {
+      reject(new Error("Invalid URL"));
+      return;
+    }
+    const transport = parsed.protocol === "https:" ? https : http;
+    const request = transport.request(
+      parsed,
+      {
+        method: "HEAD",
+        headers: { "User-Agent": "Homebase/1.0" },
+        rejectUnauthorized: false,
+        timeout: 5000
+      },
+      (response) => {
+        response.resume();
+        resolve({
+          ok: response.statusCode >= 200 && response.statusCode < 400,
+          status: response.statusCode,
+          statusText: response.statusMessage || ""
+        });
+      }
+    );
+    request.on("timeout", () => request.destroy(new Error("Request timeout")));
+    request.on("error", reject);
+    request.end();
+  });
+}
+
 function parseHttpUrl(value) {
   try {
     const parsed = new URL(value);
@@ -537,18 +553,105 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/homebase" && req.method === "GET") {
-      sendJson(res, 200, readData());
+      sendJson(res, 200, toPublicData(readData(), req));
       return;
     }
 
     if (url.pathname === "/api/homebase" && req.method === "PUT") {
+      if (!requireAuth(req, res)) return;
       const body = await readRequestBody(req);
       const saved = writeData(JSON.parse(body));
-      sendJson(res, 200, saved);
+      sendJson(res, 200, toPublicData(saved, req));
+      return;
+    }
+
+    if (url.pathname === "/api/setup" && req.method === "POST") {
+      const current = readData();
+      if (current.setupComplete && (ADMIN_PASSWORD || current.admin?.passwordHash) && !isAuthed(req)) {
+        sendJson(res, 409, { error: "Setup already completed" });
+        return;
+      }
+      const body = JSON.parse(await readRequestBody(req));
+      const firstProfile = normalizeProfile({
+        id: "default",
+        name: body.profileName || "Start",
+        categories: (Array.isArray(body.categories) ? body.categories : ["Links"]).map((name) => ({ name })),
+        links: []
+      });
+      const saved = writeData({
+        ...current,
+        setupComplete: true,
+        title: body.title || current.title,
+        subtitle: body.subtitle || current.subtitle,
+        theme: body.theme || current.theme,
+        admin: body.password ? { passwordHash: hashPassword(body.password) } : current.admin,
+        activeProfileId: firstProfile.id,
+        profiles: [firstProfile]
+      });
+      if (body.password) {
+        const sessionId = crypto.randomUUID();
+        sessions.set(sessionId, { expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+        setSessionCookie(res, sessionId);
+      }
+      sendJson(res, 200, toPublicData(saved, req));
+      return;
+    }
+
+    if (url.pathname === "/api/import" && req.method === "POST") {
+      if (!requireAuth(req, res)) return;
+      const body = JSON.parse(await readRequestBody(req));
+      const saved = writeData({ ...body, setupComplete: true });
+      sendJson(res, 200, toPublicData(saved, req));
+      return;
+    }
+
+    if (url.pathname === "/api/auth/status" && req.method === "GET") {
+      const data = readData();
+      sendJson(res, 200, { enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash), authenticated: isAuthed(req) });
+      return;
+    }
+
+    if (url.pathname === "/api/auth/login" && req.method === "POST") {
+      const body = JSON.parse(await readRequestBody(req));
+      const data = readData();
+      if (!ADMIN_PASSWORD && !data.admin?.passwordHash || verifyPassword(body.password, data.admin?.passwordHash)) {
+        const sessionId = crypto.randomUUID();
+        sessions.set(sessionId, { expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+        setSessionCookie(res, sessionId);
+        sendJson(res, 200, { enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash), authenticated: true });
+        return;
+      }
+      sendJson(res, 401, { error: "Invalid password" });
+      return;
+    }
+
+    if (url.pathname === "/api/auth/logout" && req.method === "POST") {
+      const sessionId = parseCookies(req).homebase_session;
+      if (sessionId) sessions.delete(sessionId);
+      clearSessionCookie(res);
+      const data = readData();
+      sendJson(res, 200, { enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash), authenticated: false });
+      return;
+    }
+
+    if (url.pathname === "/api/link-status" && req.method === "GET") {
+      const target = url.searchParams.get("url") || "";
+      const parsed = parseHttpUrl(target);
+      if (!parsed) {
+        sendJson(res, 200, { ok: false, status: 0, error: "Invalid URL" });
+        return;
+      }
+      try {
+        const result = await requestHead(parsed.href);
+        sendJson(res, 200, result);
+      } catch (error) {
+        sendJson(res, 200, { ok: false, status: 0, error: error.message });
+      }
       return;
     }
 
     if (url.pathname === "/api/homebase/export" && req.method === "GET") {
+      if (!requireAuth(req, res)) return;
       const data = JSON.stringify(readData(), null, 2);
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",

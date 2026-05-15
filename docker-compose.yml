@@ -9,6 +9,7 @@ services:
       PORT: ${HOMEBASE_INTERNAL_PORT:-3000}
       HOST: 0.0.0.0
       DATA_DIR: /data
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - homebase_data:/data
 

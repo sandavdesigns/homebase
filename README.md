@@ -1,28 +1,49 @@
 # Homebase Startpage
 
-Eine kleine Docker-Startseite, deren Links direkt im Browser gepflegt werden.
+Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links, Kategorien, Seitentitel und Untertitel werden direkt im Browser gepflegt und dauerhaft in einem Docker-Volume gespeichert.
 
-## Starten
+## Funktionen
+
+- Browserbasierte Pflege von Links, Kategorien, Profilen, Notizen, Titel und Untertitel
+- Suche ueber Linktitel, URL, Kategorie und Notiz
+- Automatisch gruppierte Kategorien mit alphabetischer Sortierung
+- JSON-Import und JSON-Export der aktuellen Konfiguration
+- Automatischer Favicon-Abruf mit lokalem Cache
+- Themes: Retro, Dark, Light und Terminal
+- Optionaler Admin-Modus mit Passwortschutz fuer Bearbeitung
+- Widgets fuer Uhr, Linkanzahl und schnelle Notiz
+
+## Erster Start
+
+Voraussetzungen:
+
+- Docker mit Docker Compose
+- Ein freier Host-Port, standardmaessig `3000`
+
+Start lokal:
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 
-Danach ist die Seite unter `http://localhost:3000` erreichbar. Im Heimnetz nutzt du die IP des Hosts, zum Beispiel:
+Danach ist Homebase unter `http://localhost:3000` erreichbar. Im Heimnetz nutzt du die IP des Docker-Hosts, zum Beispiel:
 
 ```text
 http://192.168.1.16:3000/
 ```
 
-## Portainer
+Beim ersten Start erscheint ein Setup-Dialog. Dort legst du Seitentitel, erstes Profil und ein Admin-Passwort fest.
 
-In Portainer kannst du die App direkt als Git-Stack deployen.
+## Portainer Deploy
+
+In Portainer kannst du Homebase als Git-Stack deployen.
 
 - Repository URL: `https://github.com/sandavdesigns/homebase.git`
 - Branch: `main`
 - Compose path: `docker-compose.yml`
 
-Environment variables in Portainer:
+Empfohlene Stack-Variablen:
 
 ```text
 HOMEBASE_PORT=3000
@@ -31,25 +52,156 @@ HOMEBASE_CONTAINER_NAME=homebase
 HOMEBASE_VOLUME_NAME=homebase_data
 ```
 
-Wenn Port `3000` schon belegt ist, reicht meistens nur:
+Wenn Port `3000` auf dem Host schon belegt ist, aendere nur den externen Port:
 
 ```text
 HOMEBASE_PORT=3001
 ```
 
-Dann bleibt die App intern auf `3000`, ist aber extern unter `http://<server-ip>:3001/` erreichbar.
+Die App bleibt im Container auf `3000`, ist aber extern unter `http://<server-ip>:3001/` erreichbar.
 
-## Daten
+## Environment Variablen
 
-Die Links werden im Docker-Volume `homebase_data` gespeichert. Den Volume-Namen kannst du mit `HOMEBASE_VOLUME_NAME` ändern.
-Favicons werden automatisch geholt und im selben Volume unter `favicons/` gecacht.
+Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und setzt daraus die Container-Umgebung.
 
-## Im Browser pflegen
+| Variable | Standard | Beschreibung |
+| --- | --- | --- |
+| `HOMEBASE_PORT` | `3000` | Externer Host-Port. |
+| `HOMEBASE_INTERNAL_PORT` | `3000` | Interner Container-Port und Wert fuer `PORT`. Normalerweise unveraendert lassen. |
+| `HOMEBASE_CONTAINER_NAME` | `homebase` | Name des Containers. |
+| `HOMEBASE_VOLUME_NAME` | `homebase_data` | Name des Docker-Volumes fuer Daten und Favicons. |
+| `ADMIN_PASSWORD` | leer | Optionales Admin-Passwort. Alternativ kann das Passwort beim ersten Start im Setup gesetzt werden. |
+
+Container-interne Variablen:
+
+- `PORT`: Wird von `HOMEBASE_INTERNAL_PORT` gesetzt.
+- `HOST`: Wird im Container auf `0.0.0.0` gesetzt.
+- `DATA_DIR`: Wird im Container auf `/data` gesetzt.
+
+## Profile
+
+Profile werden direkt im Browser verwaltet. Jedes Profil hat eigene Kategorien und Links, teilt sich aber Titel, Theme, Widgets und Favicon-Cache mit der Homebase-Instanz.
+
+- `+ Profil` erstellt ein neues Profil.
+- `Profil löschen` entfernt das aktive Profil, solange mindestens ein weiteres Profil existiert.
+- Das Profil-Dropdown wechselt zwischen Profilen.
+
+## Admin-Modus
+
+Wenn ein Admin-Passwort gesetzt ist, bleibt die Startseite sichtbar, aber Bearbeiten, Import, Export und Profilverwaltung sind gesperrt. Ueber `Admin gesperrt` kannst du entsperren. Ueber `Admin offen` sperrst du die Bearbeitung wieder.
+
+Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt werden oder beim ersten Start im Setup. Das Setup-Passwort wird gehasht in `homebase.json` gespeichert.
+
+## Themes
+
+Das Theme-Dropdown wechselt zwischen `Retro`, `Dark`, `Light` und `Terminal`. Die Auswahl wird in `homebase.json` gespeichert.
+
+## Import und Export
+
+Export:
+
+- Im Browser auf `Export` klicken.
+- Alternativ `http://<server-ip>:<port>/api/homebase/export` aufrufen.
+- Die Datei wird als `homebase.json` heruntergeladen.
+
+Import:
+
+- Im Browser auf `Import` klicken.
+- JSON-Datei auswaehlen oder JSON direkt einfuegen.
+- `Importieren` ersetzt die aktuelle Konfiguration.
+
+Die Datei liegt im Container unter:
+
+```text
+/data/homebase.json
+```
+
+Beim Schreiben normalisiert Homebase Daten wie fehlende IDs, Kategorien und URLs. Gueltige URLs duerfen mit `http://`, `https://`, `mailto:` oder `tel:` beginnen.
+
+## Backups
+
+Wichtige Daten liegen im Docker-Volume:
+
+- `homebase.json`: Startseiten-Konfiguration
+- `favicons/`: Lokaler Favicon-Cache
+
+Ein einfaches Backup ist der JSON-Export aus dem Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume `HOMEBASE_VOLUME_NAME`.
+
+Beispiel mit einem temporaeren Alpine-Container:
+
+```bash
+docker run --rm \
+  -v homebase_data:/data:ro \
+  -v "$PWD":/backup \
+  alpine tar czf /backup/homebase_data.tar.gz -C /data .
+```
+
+Restore:
+
+```bash
+docker compose down
+docker run --rm \
+  -v homebase_data:/data \
+  -v "$PWD":/backup \
+  alpine sh -c "rm -rf /data/* && tar xzf /backup/homebase_data.tar.gz -C /data"
+docker compose up -d
+```
+
+Pruefe vor dem Restore, dass der Volume-Name zum Zielsystem passt.
+
+## Favicon Cache
+
+Favicons werden automatisch ueber `/api/favicon?url=...` geladen und unter `/data/favicons/` gecacht. Der Browser darf Favicons bis zu sieben Tage cachen.
+
+Wenn ein Icon falsch oder veraltet ist:
+
+1. Container stoppen.
+2. Den Ordner `favicons/` im Daten-Volume loeschen oder einzelne Cache-Dateien entfernen.
+3. Container starten.
+4. Browser-Cache hart aktualisieren, falls das alte Icon weiterhin angezeigt wird.
+
+Wenn kein Icon geladen werden kann, zeigt Homebase ein eingebautes Fallback-Icon.
+
+## Widgets
+
+Diese Version enthaelt diese Widgets:
+
+- Datum
+- Uhrzeit
+- Linkanzahl im aktiven Profil
+- Schnelle Notiz
+
+## Updates
+
+Lokales Update:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Portainer Update:
+
+1. Stack oeffnen.
+2. `Pull latest image/redeploy` oder `Update the stack` ausfuehren.
+3. Bei Git-Stacks sicherstellen, dass Branch `main` und Compose path `docker-compose.yml` weiterhin stimmen.
+
+Das Daten-Volume bleibt bei normalen Updates erhalten. Loesche das Volume nur, wenn du bewusst alle Homebase-Daten entfernen willst.
+
+Nach dem Update:
+
+- `http://<server-ip>:<port>/api/health` sollte `{"ok":true}` liefern.
+- Startseite im Browser neu laden.
+- Export testen, wenn Datenmigrationen erwartet werden.
+
+## Bedienung im Browser
 
 - `+ Link` legt neue Links an.
-- `...` an einem Link bearbeitet oder löscht ihn.
+- `...` an einem Link bearbeitet oder loescht ihn.
 - `Kategorien` verwaltet Gruppen und Umbenennungen zentral.
-- `Titel` ändert Titel und Untertitel.
-- `Export` lädt die aktuelle JSON-Konfiguration herunter.
+- `+ Profil` erstellt ein weiteres Profil.
+- `Import` ersetzt die aktuelle Konfiguration durch JSON.
+- `Titel` aendert Titel und Untertitel.
+- `Export` laedt die aktuelle JSON-Konfiguration herunter.
 
 Kategorien und Links werden alphabetisch angezeigt.
