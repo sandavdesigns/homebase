@@ -168,6 +168,7 @@ async function loadStatus() {
   } finally {
     state.statusLoading = false;
     renderStatus();
+    renderGroups();
   }
 }
 
@@ -234,7 +235,7 @@ function renderWidgets() {
 
 function renderStatus() {
   const items = Array.isArray(state.status.items) ? state.status.items : [];
-  elements.statusWidget.hidden = !items.length && !state.statusLoading;
+  elements.statusWidget.hidden = true;
   elements.refreshStatusButton.disabled = state.statusLoading;
   elements.refreshStatusButton.textContent = state.statusLoading ? "Lädt..." : "Aktualisieren";
   elements.statusList.replaceChildren(
@@ -421,10 +422,12 @@ function getCategoryNames() {
 function createLinkCard(link) {
   const wrapper = document.createElement("div");
   wrapper.className = "link-card";
+  const status = getStatusForLink(link);
+  if (status) wrapper.classList.add(`has-status`, `is-${status.status || "offline"}`);
   const anchor = document.createElement("a");
   anchor.href = link.url;
-  anchor.target = "_self";
-  anchor.rel = "noreferrer";
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
 
   const title = document.createElement("p");
   title.className = "link-title";
@@ -445,6 +448,7 @@ function createLinkCard(link) {
     note.textContent = link.note;
     anchor.append(note);
   }
+  if (status) anchor.append(createLinkStatus(status));
   anchor.className = "link-content";
 
   const edit = document.createElement("button");
@@ -455,6 +459,56 @@ function createLinkCard(link) {
   edit.addEventListener("click", () => openLinkDialog(link));
   wrapper.append(anchor, edit);
   return wrapper;
+}
+
+function getStatusForLink(link) {
+  const items = Array.isArray(state.status.items) ? state.status.items : [];
+  const linkOrigin = getUrlOrigin(link.url);
+  const title = normalizeMatchText(link.title);
+  return items.find((item) => {
+    const itemOrigin = getUrlOrigin(item.url);
+    if (linkOrigin && itemOrigin && linkOrigin === itemOrigin) return true;
+    const itemName = normalizeMatchText(item.name);
+    return itemName && title && (itemName === title || title.includes(itemName) || itemName.includes(title));
+  });
+}
+
+function createLinkStatus(status) {
+  const panel = document.createElement("div");
+  panel.className = "link-status-panel";
+
+  const line = document.createElement("p");
+  line.className = "link-status-line";
+  const dot = document.createElement("span");
+  dot.className = "link-status-dot";
+  const message = document.createElement("span");
+  message.textContent = status.message || (status.ok ? "Online" : "Offline");
+  line.append(dot, message);
+
+  const metrics = document.createElement("div");
+  metrics.className = "link-status-metrics";
+  const metricItems = Array.isArray(status.metrics) ? status.metrics.slice(0, 3) : [];
+  metrics.replaceChildren(...metricItems.map((metric) => {
+    const item = document.createElement("span");
+    item.textContent = `${metric.label} ${metric.value}`;
+    return item;
+  }));
+
+  panel.append(line);
+  if (metricItems.length) panel.append(metrics);
+  return panel;
+}
+
+function getUrlOrigin(value) {
+  try {
+    return new URL(value).origin.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeMatchText(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function openLinkDialog(link = null) {

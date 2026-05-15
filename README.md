@@ -9,7 +9,7 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 - Automatisch gruppierte Kategorien mit alphabetischer Sortierung
 - JSON-Import und JSON-Export der aktuellen Konfiguration
 - Automatischer Favicon-Abruf mit lokalem Cache
-- Optionale Statuskarten fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
+- Optionale Link-Statusanzeigen fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
 - Themes: Retro, Time Circuit, Dark, Light und Terminal
 - Optionaler Admin-Modus mit Passwortschutz fuer Bearbeitung
 - Widgets fuer Uhr und mehrere Notizen
@@ -96,7 +96,7 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 | `HOMEBASE_CONTAINER_NAME` | `homebase` | Name des Containers. |
 | `HOMEBASE_VOLUME_NAME` | `homebase_data` | Name des Docker-Volumes fuer Daten und Favicons. |
 | `ADMIN_PASSWORD` | leer | Optionales Admin-Passwort. Alternativ kann das Passwort beim ersten Start im Setup gesetzt werden. |
-| `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Statuskarten. Secrets bleiben in der Container-Umgebung. |
+| `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Link-Statusanzeigen. Secrets bleiben in der Container-Umgebung. |
 
 Container-interne Variablen:
 
@@ -211,11 +211,11 @@ Diese Version enthaelt diese Widgets:
 - Datum
 - Uhrzeit
 - Mehrere Notizen
-- Systemstatus, wenn `HOMEBASE_STATUS_TARGETS` konfiguriert ist
+- Link-Statusanzeigen, wenn `HOMEBASE_STATUS_TARGETS` zu vorhandenen Link-URLs oder Linktiteln passt
 
 ## Status Integrationen
 
-Statuskarten werden ueber die Environment-Variable `HOMEBASE_STATUS_TARGETS` konfiguriert. Das ist bewusst kein Browser-Dialog, damit API-Token nicht im JSON-Export oder in der sichtbaren App-Konfiguration landen.
+Statusanzeigen werden ueber die Environment-Variable `HOMEBASE_STATUS_TARGETS` konfiguriert und an passende Linkkarten geheftet. Homebase matcht zuerst ueber denselben URL-Ursprung, zum Beispiel `https://192.168.1.15:8006`, und danach ueber aehnliche Namen. Das ist bewusst kein Browser-Dialog, damit API-Token nicht im JSON-Export oder in der sichtbaren App-Konfiguration landen.
 
 Minimal ohne API-Zugangsdaten:
 
