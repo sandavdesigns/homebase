@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#17201d" />
+    <title>Homebase</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <p class="kicker" id="dateLabel">Heute</p>
+          <h1 id="pageTitle">Startseite</h1>
+          <p id="pageSubtitle"></p>
+        </div>
+        <div class="clock" aria-live="polite">
+          <span id="timeLabel">--:--</span>
+        </div>
+      </section>
+
+      <section class="command-row" aria-label="Startseitenwerkzeuge">
+        <label class="search">
+          <span>Suchen</span>
+          <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
+        </label>
+        <button class="primary" id="addButton" type="button">+ Link</button>
+        <button id="settingsButton" type="button">Titel</button>
+        <a class="button" href="/api/homebase/export">Export</a>
+      </section>
+
+      <section id="emptyState" class="empty" hidden>
+        <h2>Noch keine Treffer</h2>
+        <p>Lege einen neuen Link an oder passe die Suche an.</p>
+      </section>
+
+      <section id="groups" class="groups" aria-label="Links"></section>
+    </main>
+
+    <dialog id="editorDialog">
+      <form method="dialog" class="dialog-card" id="linkForm">
+        <header>
+          <h2 id="dialogTitle">Link bearbeiten</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <input type="hidden" id="linkId" />
+        <label>
+          Name
+          <input id="linkTitle" required maxlength="80" />
+        </label>
+        <label>
+          URL
+          <input id="linkUrl" required placeholder="https://..." />
+        </label>
+        <label>
+          Kategorie
+          <input id="linkCategory" required maxlength="40" list="categoryList" />
+          <datalist id="categoryList"></datalist>
+        </label>
+        <label>
+          Notiz
+          <input id="linkNote" maxlength="120" />
+        </label>
+        <footer>
+          <button id="deleteButton" class="danger" type="button">Löschen</button>
+          <span></span>
+          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
+          <button class="primary" id="saveLinkButton" value="default" type="button">Speichern</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" class="dialog-card" id="settingsForm">
+        <header>
+          <h2>Seitentitel</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <label>
+          Titel
+          <input id="settingsTitle" required maxlength="80" />
+        </label>
+        <label>
+          Untertitel
+          <input id="settingsSubtitle" maxlength="140" />
+        </label>
+        <footer>
+          <span></span>
+          <span></span>
+          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
+          <button class="primary" id="saveSettingsButton" value="default" type="button">Speichern</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
