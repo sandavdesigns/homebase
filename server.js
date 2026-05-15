@@ -148,7 +148,7 @@ function normalizeProfile(profile) {
 }
 
 function normalizeTheme(theme) {
-  return ["retro", "dark", "light", "terminal"].includes(theme) ? theme : "retro";
+  return ["retro", "time-circuit", "dark", "light", "terminal"].includes(theme) ? theme : "retro";
 }
 
 function normalizeWidgets(widgets) {

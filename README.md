@@ -9,7 +9,7 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 - Automatisch gruppierte Kategorien mit alphabetischer Sortierung
 - JSON-Import und JSON-Export der aktuellen Konfiguration
 - Automatischer Favicon-Abruf mit lokalem Cache
-- Themes: Retro, Dark, Light und Terminal
+- Themes: Retro, Time Circuit, Dark, Light und Terminal
 - Optionaler Admin-Modus mit Passwortschutz fuer Bearbeitung
 - Widgets fuer Uhr und mehrere Notizen
 
@@ -134,7 +134,7 @@ Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt
 
 ## Themes
 
-Das Theme-Dropdown wechselt zwischen `Retro`, `Dark`, `Light` und `Terminal`. Die Auswahl wird in `homebase.json` gespeichert.
+Das Theme-Dropdown wechselt zwischen `Retro`, `Time Circuit`, `Dark`, `Light` und `Terminal`. Die Auswahl wird in `homebase.json` gespeichert.
 
 ## Import und Export
 

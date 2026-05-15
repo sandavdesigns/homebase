@@ -131,6 +131,47 @@ body[data-theme="terminal"] {
   --accent-ink: #04100c;
 }
 
+body[data-theme="time-circuit"] {
+  --bg: #090b0c;
+  --bg-soft: #121516;
+  --panel: rgba(12, 17, 17, 0.84);
+  --panel-strong: rgba(22, 28, 27, 0.97);
+  --text: #fff2d8;
+  --muted: #b9c0a9;
+  --line: rgba(255, 134, 47, 0.24);
+  --accent: #56ff8f;
+  --accent-2: #ff342f;
+  --accent-3: #ffb238;
+  --accent-ink: #07100a;
+  --danger: #ff3c35;
+  --good: #56ff8f;
+  --warn: #ffb238;
+  --shadow: 0 22px 74px rgba(0, 0, 0, 0.48);
+}
+
+body[data-theme="time-circuit"] {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255, 52, 47, 0.22), transparent 17rem),
+    radial-gradient(circle at 12% 18%, rgba(86, 255, 143, 0.16), transparent 20rem),
+    linear-gradient(180deg, rgba(255, 178, 56, 0.08), transparent 34rem),
+    linear-gradient(150deg, var(--bg) 0%, var(--bg-soft) 55%, #060707 100%);
+}
+
+body[data-theme="time-circuit"]::before {
+  opacity: 0.42;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 178, 56, 0.055) 0 1px, transparent 1px 5px),
+    linear-gradient(90deg, transparent, rgba(86, 255, 143, 0.14), transparent);
+}
+
+body[data-theme="time-circuit"]::after {
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(86, 255, 143, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 52, 47, 0.18) 1px, transparent 1px);
+  background-size: 88px 52px;
+}
+
 body[data-theme="ember"] {
   --bg: #191413;
   --bg-soft: #251d1a;
@@ -253,6 +294,28 @@ h1 {
     var(--panel);
   box-shadow: var(--shadow), 0 0 28px color-mix(in srgb, var(--accent-2), transparent 82%);
   animation: clock-pulse 4s ease-in-out infinite;
+}
+
+body[data-theme="time-circuit"] .clock {
+  border-color: rgba(255, 52, 47, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 52, 47, 0.18), rgba(255, 178, 56, 0.07)),
+    #120d0c;
+  box-shadow:
+    var(--shadow),
+    0 0 34px rgba(255, 52, 47, 0.34),
+    inset 0 0 18px rgba(255, 178, 56, 0.08);
+}
+
+body[data-theme="time-circuit"] .clock-label {
+  color: var(--accent-3);
+}
+
+body[data-theme="time-circuit"] #timeLabel {
+  color: var(--accent-2);
+  text-shadow:
+    0 0 8px rgba(255, 52, 47, 0.72),
+    0 0 18px rgba(255, 178, 56, 0.36);
 }
 
 .clock-label {
@@ -473,6 +536,11 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+body[data-theme="time-circuit"] .group h2 {
+  color: var(--accent-3);
+  text-shadow: 0 0 14px rgba(255, 178, 56, 0.42);
+}
+
 .link-list {
   display: grid;
   gap: 8px;
@@ -498,6 +566,25 @@ textarea:focus {
     0 10px 24px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+body[data-theme="time-circuit"] .link-card {
+  border-color: rgba(255, 178, 56, 0.08);
+  background:
+    linear-gradient(135deg, rgba(86, 255, 143, 0.085), rgba(255, 52, 47, 0.065)),
+    color-mix(in srgb, var(--panel-strong), transparent 30%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 178, 56, 0.08),
+    0 10px 24px rgba(0, 0, 0, 0.18),
+    0 0 16px rgba(86, 255, 143, 0.045);
+}
+
+body[data-theme="time-circuit"] .link-card:hover {
+  border-color: rgba(255, 178, 56, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(255, 178, 56, 0.18),
+    0 0 26px rgba(86, 255, 143, 0.2),
+    0 18px 36px rgba(0, 0, 0, 0.3);
 }
 
 .link-card::before {
@@ -550,6 +637,11 @@ textarea:focus {
   line-height: 1.2;
   color: var(--text);
   text-shadow: 0 0 14px color-mix(in srgb, var(--accent-2), transparent 84%);
+}
+
+body[data-theme="time-circuit"] .link-title {
+  color: #fff4dc;
+  text-shadow: 0 0 13px rgba(86, 255, 143, 0.22);
 }
 
 .link-title span {
