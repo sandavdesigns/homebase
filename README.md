@@ -24,7 +24,7 @@ Start lokal:
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
+docker compose up -d
 ```
 
 Danach ist Homebase unter `http://localhost:3000` erreichbar. Im Heimnetz nutzt du die IP des Docker-Hosts, zum Beispiel:
@@ -46,10 +46,33 @@ In Portainer kannst du Homebase als Git-Stack deployen.
 Empfohlene Stack-Variablen:
 
 ```text
+HOMEBASE_IMAGE=ghcr.io/sandavdesigns/homebase:latest
 HOMEBASE_PORT=3000
 HOMEBASE_INTERNAL_PORT=3000
 HOMEBASE_CONTAINER_NAME=homebase
 HOMEBASE_VOLUME_NAME=homebase_data
+```
+
+Alternativ kannst du in Portainer einen Stack direkt mit dem Image anlegen:
+
+```yaml
+services:
+  homebase:
+    image: ghcr.io/sandavdesigns/homebase:latest
+    container_name: homebase
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATA_DIR: /data
+      ADMIN_PASSWORD:
+    volumes:
+      - homebase_data:/data
+
+volumes:
+  homebase_data:
 ```
 
 Wenn Port `3000` auf dem Host schon belegt ist, aendere nur den externen Port:
@@ -66,6 +89,7 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 
 | Variable | Standard | Beschreibung |
 | --- | --- | --- |
+| `HOMEBASE_IMAGE` | `ghcr.io/sandavdesigns/homebase:latest` | Docker Image fuer den Stack. Fuer reproduzierbare Deployments auf einen Versions-Tag setzen. |
 | `HOMEBASE_PORT` | `3000` | Externer Host-Port. |
 | `HOMEBASE_INTERNAL_PORT` | `3000` | Interner Container-Port und Wert fuer `PORT`. Normalerweise unveraendert lassen. |
 | `HOMEBASE_CONTAINER_NAME` | `homebase` | Name des Containers. |
@@ -77,6 +101,22 @@ Container-interne Variablen:
 - `PORT`: Wird von `HOMEBASE_INTERNAL_PORT` gesetzt.
 - `HOST`: Wird im Container auf `0.0.0.0` gesetzt.
 - `DATA_DIR`: Wird im Container auf `/data` gesetzt.
+
+## Docker Image
+
+Das Image wird per GitHub Actions automatisch gebaut und in GitHub Container Registry veroeffentlicht:
+
+```text
+ghcr.io/sandavdesigns/homebase:latest
+```
+
+Bei Pushes auf `main` wird `latest` aktualisiert. Git-Tags im Format `v0.1.0` erzeugen zusaetzliche versionierte Image-Tags. Pull Requests werden nur gebaut, aber nicht gepusht.
+
+Fuer lokale Entwicklung mit Build aus dem Repository:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 ## Profile
 
@@ -177,7 +217,8 @@ Lokales Update:
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Portainer Update:

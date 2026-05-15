@@ -1,6 +1,6 @@
 services:
   homebase:
-    build: .
+    image: ${HOMEBASE_IMAGE:-ghcr.io/sandavdesigns/homebase:latest}
     container_name: ${HOMEBASE_CONTAINER_NAME:-homebase}
     restart: unless-stopped
     ports:

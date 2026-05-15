@@ -1,5 +1,10 @@
 FROM node:22-alpine
 
+LABEL org.opencontainers.image.title="Homebase"
+LABEL org.opencontainers.image.description="A small Docker-friendly browser-managed startpage for home labs."
+LABEL org.opencontainers.image.source="https://github.com/sandavdesigns/homebase"
+LABEL org.opencontainers.image.licenses="MIT"
+
 WORKDIR /app
 COPY package.json server.js ./
 COPY public ./public
