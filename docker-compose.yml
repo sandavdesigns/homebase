@@ -10,6 +10,7 @@ services:
       HOST: 0.0.0.0
       DATA_DIR: /data
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      HOMEBASE_STATUS_TARGETS: ${HOMEBASE_STATUS_TARGETS:-[]}
     volumes:
       - homebase_data:/data
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=time1" />
+    <link rel="stylesheet" href="/styles.css?v=status1" />
   </head>
   <body>
     <main class="shell">
@@ -55,6 +55,14 @@
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
+        <article class="widget status-widget" id="statusWidget" hidden>
+          <header class="widget-header">
+            <p>Systemstatus</p>
+            <button id="refreshStatusButton" type="button">Aktualisieren</button>
+          </header>
+          <div id="statusList" class="status-list"></div>
+          <p id="statusUpdated" class="status-updated"></p>
+        </article>
         <article class="widget notes-widget" data-widget="notes">
           <header class="widget-header">
             <p>Notizen</p>
@@ -242,6 +250,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=time1"></script>
+    <script src="/app.js?v=status1"></script>
   </body>
 </html>

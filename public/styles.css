@@ -439,6 +439,10 @@ textarea:focus {
   min-height: 0;
 }
 
+.status-widget {
+  min-height: 0;
+}
+
 .widget-header {
   display: flex;
   gap: 10px;
@@ -479,6 +483,116 @@ textarea:focus {
 
 .empty-note {
   color: var(--muted);
+}
+
+.status-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.service-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035)),
+    color-mix(in srgb, var(--panel-strong), transparent 34%);
+  overflow: hidden;
+}
+
+.service-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background: linear-gradient(110deg, transparent, var(--service-glow, var(--accent)), transparent);
+  transform: translateX(-70%);
+  animation: panel-sweep 8s ease-in-out infinite;
+}
+
+.service-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.service-card.is-online {
+  --service-glow: var(--good);
+  border-color: color-mix(in srgb, var(--good), transparent 68%);
+}
+
+.service-card.is-warning {
+  --service-glow: var(--warn);
+  border-color: color-mix(in srgb, var(--warn), transparent 58%);
+}
+
+.service-card.is-offline {
+  --service-glow: var(--danger);
+  border-color: color-mix(in srgb, var(--danger), transparent 58%);
+}
+
+.service-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.service-head div,
+.service-metric {
+  display: grid;
+  gap: 3px;
+}
+
+.service-head strong {
+  font-weight: 700;
+}
+
+.service-head span,
+.service-message,
+.status-updated,
+.service-metric small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.service-message,
+.status-updated {
+  margin: 0;
+}
+
+.service-badge {
+  border: 1px solid color-mix(in srgb, var(--service-glow, var(--accent)), transparent 42%);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--service-glow, var(--accent)), transparent 88%);
+  font-weight: 750;
+}
+
+.service-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 8px;
+}
+
+.service-metric {
+  border: 1px solid color-mix(in srgb, var(--line), transparent 26%);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.service-metric strong {
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.status-updated {
+  margin-top: 10px;
 }
 
 .groups {

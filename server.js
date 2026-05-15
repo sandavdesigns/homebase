@@ -11,6 +11,7 @@ const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const FAVICON_DIR = path.join(DATA_DIR, "favicons");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const STATUS_TARGETS = parseStatusTargets(process.env.HOMEBASE_STATUS_TARGETS || "[]");
 const sessions = new Map();
 
 const defaultCategories = [
@@ -411,7 +412,272 @@ function extractIconUrls(html, pageUrl) {
   return urls;
 }
 
-function requestBuffer(targetUrl, { accept, limit }) {
+function parseStatusTargets(raw) {
+  if (!raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    const targets = Array.isArray(parsed) ? parsed : [parsed];
+    return targets
+      .map((target) => ({
+        id: String(target.id || target.name || crypto.randomUUID()).slice(0, 80),
+        name: String(target.name || target.type || "Status").slice(0, 80),
+        type: String(target.type || "basic").toLowerCase(),
+        url: normalizeUrl(String(target.url || "")),
+        statusPath: String(target.statusPath || ""),
+        apiKey: String(target.apiKey || ""),
+        username: String(target.username || ""),
+        password: String(target.password || ""),
+        tokenId: String(target.tokenId || ""),
+        tokenSecret: String(target.tokenSecret || ""),
+        headerName: String(target.headerName || ""),
+        headerValue: String(target.headerValue || "")
+      }))
+      .filter((target) => target.url && parseHttpUrl(target.url));
+  } catch (error) {
+    console.error(`HOMEBASE_STATUS_TARGETS konnte nicht gelesen werden: ${error.message}`);
+    return [];
+  }
+}
+
+function publicStatusTarget(target) {
+  return {
+    id: target.id,
+    name: target.name,
+    type: target.type,
+    url: target.url
+  };
+}
+
+async function readStatusTargets() {
+  const items = await Promise.all(STATUS_TARGETS.map(readStatusTarget));
+  return {
+    configured: STATUS_TARGETS.length,
+    updatedAt: new Date().toISOString(),
+    items
+  };
+}
+
+async function readStatusTarget(target) {
+  const base = {
+    ...publicStatusTarget(target),
+    ok: false,
+    status: "offline",
+    details: [],
+    metrics: []
+  };
+
+  try {
+    if (target.type === "proxmox") return await readProxmoxStatus(target, base);
+    if (target.type === "unraid" && target.apiKey) return await readUnraidStatus(target, base);
+    if (target.type === "amp" && target.username && target.password) return await readAmpStatus(target, base);
+    return await readGenericServiceStatus(target, base);
+  } catch (error) {
+    return {
+      ...base,
+      message: error.message || "Nicht erreichbar"
+    };
+  }
+}
+
+async function readUnraidStatus(target, base) {
+  const response = await requestJsonPost(new URL(target.statusPath || "/graphql", target.url).href, {
+    headers: { "x-api-key": target.apiKey },
+    body: {
+      query: `query HomebaseStatus {
+        info {
+          os { distro release uptime }
+          cpu { cores threads }
+        }
+        array {
+          state
+          capacity { disks { used total free } }
+        }
+        dockerContainers {
+          id
+          state
+        }
+      }`
+    }
+  });
+
+  if (response.errors?.length) throw new Error(response.errors[0].message || "Unraid API Fehler");
+  const data = response.data || {};
+  const containers = Array.isArray(data.dockerContainers) ? data.dockerContainers : [];
+  const runningContainers = containers.filter((container) => String(container.state).toLowerCase() === "running").length;
+  const diskCapacity = data.array?.capacity?.disks || {};
+  const used = Number(diskCapacity.used || 0);
+  const total = Number(diskCapacity.total || 0);
+  const metrics = [
+    { label: "Array", value: String(data.array?.state || "unknown") },
+    { label: "Docker", value: `${runningContainers}/${containers.length}` }
+  ];
+  if (total > 0) metrics.push({ label: "Speicher", value: `${Math.round((used / total) * 100)}%` });
+  if (data.info?.cpu?.cores) metrics.push({ label: "CPU", value: `${data.info.cpu.cores} Cores` });
+
+  return {
+    ...base,
+    ok: true,
+    status: "online",
+    message: data.info?.os?.release ? `Unraid ${data.info.os.release}` : "API erreichbar",
+    metrics
+  };
+}
+
+async function readAmpStatus(target, base) {
+  const login = await requestJsonPost(new URL("/API/Core/Login", target.url).href, {
+    body: {
+      username: target.username,
+      password: target.password,
+      token: "",
+      rememberMe: false
+    }
+  });
+  const sessionId = login.sessionID || login.SESSIONID || login.sessionId || login.result?.sessionID;
+  if (!sessionId) throw new Error("AMP Login fehlgeschlagen");
+
+  const status = await requestJsonPost(new URL("/API/Core/GetStatus", target.url).href, {
+    body: { SESSIONID: sessionId }
+  });
+  const metrics = [];
+  const source = status.result || status;
+  for (const [label, key] of [["CPU", "CPUUsage"], ["RAM", "MemoryUsageMB"], ["Spieler", "UsersOnline"]]) {
+    if (source[key] !== undefined) metrics.push({ label, value: String(source[key]).slice(0, 24) });
+  }
+
+  return {
+    ...base,
+    ok: true,
+    status: "online",
+    message: source.State || source.Status || "AMP API erreichbar",
+    metrics
+  };
+}
+
+async function readGenericServiceStatus(target, base) {
+  const statusUrl = target.statusPath ? new URL(target.statusPath, target.url).href : target.url;
+  const headers = target.headerName && target.headerValue ? { [target.headerName]: target.headerValue } : {};
+  const result = await requestHead(statusUrl, headers).catch(async () => {
+    const json = await requestJson(statusUrl, { headers });
+    return { ok: true, status: 200, statusText: "OK", json };
+  });
+
+  const metrics = [];
+  if (result.json && typeof result.json === "object") {
+    const value = result.json.status || result.json.state || result.json.version || result.json.name;
+    if (value) metrics.push({ label: "API", value: String(value).slice(0, 40) });
+  }
+
+  return {
+    ...base,
+    ok: result.ok,
+    status: result.ok ? "online" : "warning",
+    message: result.ok ? "Erreichbar" : `HTTP ${result.status || 0}`,
+    metrics
+  };
+}
+
+async function readProxmoxStatus(target, base) {
+  const headers = target.tokenId && target.tokenSecret
+    ? { Authorization: `PVEAPIToken=${target.tokenId}=${target.tokenSecret}` }
+    : {};
+  const version = await requestJson(new URL("/api2/json/version", target.url).href, { headers });
+  const metrics = [];
+  if (version.data?.version) metrics.push({ label: "Version", value: String(version.data.version) });
+
+  if (!headers.Authorization) {
+    return {
+      ...base,
+      ok: true,
+      status: "online",
+      message: "API erreichbar",
+      metrics
+    };
+  }
+
+  const resources = await requestJson(new URL("/api2/json/cluster/resources", target.url).href, { headers });
+  const data = Array.isArray(resources.data) ? resources.data : [];
+  const nodes = data.filter((item) => item.type === "node");
+  const guests = data.filter((item) => item.type === "qemu" || item.type === "lxc");
+  const onlineNodes = nodes.filter((item) => item.status === "online").length;
+  const runningGuests = guests.filter((item) => item.status === "running").length;
+  const totalMemory = nodes.reduce((sum, item) => sum + Number(item.maxmem || 0), 0);
+  const usedMemory = nodes.reduce((sum, item) => sum + Number(item.mem || 0), 0);
+
+  metrics.push({ label: "Nodes", value: `${onlineNodes}/${nodes.length || 0}` });
+  metrics.push({ label: "VM/CT", value: `${runningGuests}/${guests.length || 0}` });
+  if (totalMemory > 0) metrics.push({ label: "RAM", value: `${Math.round((usedMemory / totalMemory) * 100)}%` });
+
+  return {
+    ...base,
+    ok: onlineNodes > 0 || nodes.length === 0,
+    status: onlineNodes === nodes.length ? "online" : "warning",
+    message: onlineNodes === nodes.length ? "Cluster online" : "Teilweise erreichbar",
+    details: nodes.slice(0, 4).map((node) => ({
+      label: node.node || node.id || "Node",
+      value: node.status || "unknown"
+    })),
+    metrics
+  };
+}
+
+async function requestJson(targetUrl, { headers = {} } = {}) {
+  const response = await requestBuffer(targetUrl, {
+    accept: "application/json,*/*",
+    headers,
+    limit: 1_000_000
+  });
+  return JSON.parse(response.buffer.toString("utf8"));
+}
+
+function requestJsonPost(targetUrl, { headers = {}, body = {} } = {}) {
+  return new Promise((resolve, reject) => {
+    const parsed = parseHttpUrl(targetUrl);
+    if (!parsed) {
+      reject(new Error("Invalid URL"));
+      return;
+    }
+
+    const payload = JSON.stringify(body);
+    const transport = parsed.protocol === "https:" ? https : http;
+    const request = transport.request(
+      parsed,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json,*/*",
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+          "User-Agent": "Homebase/1.0",
+          ...headers
+        },
+        rejectUnauthorized: false,
+        timeout: 5000
+      },
+      (response) => {
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          response.resume();
+          reject(new Error(`HTTP ${response.statusCode}`));
+          return;
+        }
+
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
+    );
+    request.on("timeout", () => request.destroy(new Error("Request timeout")));
+    request.on("error", reject);
+    request.end(payload);
+  });
+}
+
+function requestBuffer(targetUrl, { accept, limit, headers = {} }) {
   return new Promise((resolve, reject) => {
     const parsed = parseHttpUrl(targetUrl);
     if (!parsed) {
@@ -423,14 +689,14 @@ function requestBuffer(targetUrl, { accept, limit }) {
     const request = transport.request(
       parsed,
       {
-        headers: { Accept: accept, "User-Agent": "Homebase/1.0" },
+        headers: { Accept: accept, "User-Agent": "Homebase/1.0", ...headers },
         rejectUnauthorized: false,
         timeout: 5000
       },
       (response) => {
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           response.resume();
-          requestBuffer(new URL(response.headers.location, parsed.href).href, { accept, limit }).then(resolve, reject);
+          requestBuffer(new URL(response.headers.location, parsed.href).href, { accept, headers, limit }).then(resolve, reject);
           return;
         }
         if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -463,7 +729,7 @@ function requestBuffer(targetUrl, { accept, limit }) {
   });
 }
 
-function requestHead(targetUrl) {
+function requestHead(targetUrl, headers = {}) {
   return new Promise((resolve, reject) => {
     const parsed = parseHttpUrl(targetUrl);
     if (!parsed) {
@@ -475,7 +741,7 @@ function requestHead(targetUrl) {
       parsed,
       {
         method: "HEAD",
-        headers: { "User-Agent": "Homebase/1.0" },
+        headers: { "User-Agent": "Homebase/1.0", ...headers },
         rejectUnauthorized: false,
         timeout: 5000
       },
@@ -657,6 +923,11 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         sendJson(res, 200, { ok: false, status: 0, error: error.message });
       }
+      return;
+    }
+
+    if (url.pathname === "/api/status" && req.method === "GET") {
+      sendJson(res, 200, await readStatusTargets());
       return;
     }
 

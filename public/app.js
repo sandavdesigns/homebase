@@ -9,6 +9,8 @@ const state = {
   links: [],
   widgets: { clock: true, notes: [] },
   auth: { enabled: false, authenticated: true },
+  status: { configured: 0, updatedAt: "", items: [] },
+  statusLoading: false,
   query: "",
   searchOpen: false
 };
@@ -34,6 +36,10 @@ const elements = {
   deleteProfileButton: document.querySelector("#deleteProfileButton"),
   themeSelect: document.querySelector("#themeSelect"),
   widgets: document.querySelector("#widgets"),
+  statusWidget: document.querySelector("#statusWidget"),
+  statusList: document.querySelector("#statusList"),
+  statusUpdated: document.querySelector("#statusUpdated"),
+  refreshStatusButton: document.querySelector("#refreshStatusButton"),
   notesList: document.querySelector("#notesList"),
   noteInput: document.querySelector("#noteInput"),
   addNoteButton: document.querySelector("#addNoteButton"),
@@ -111,6 +117,7 @@ async function loadData() {
   syncActiveProfileAliases();
   render();
   if (!state.setupComplete) elements.setupDialog.showModal();
+  loadStatus().catch(() => {});
 }
 
 function syncActiveProfileAliases() {
@@ -149,6 +156,19 @@ async function saveData(message = "Gespeichert") {
   syncActiveProfileAliases();
   render();
   showToast(message);
+}
+
+async function loadStatus() {
+  state.statusLoading = true;
+  renderStatus();
+  try {
+    const response = await fetch("/api/status");
+    if (!response.ok) throw new Error("Status konnte nicht geladen werden");
+    state.status = await response.json();
+  } finally {
+    state.statusLoading = false;
+    renderStatus();
+  }
 }
 
 function syncProfileFromAliases() {
@@ -204,11 +224,85 @@ function renderProfiles() {
 function renderWidgets() {
   const notes = getNotes();
   elements.widgets.hidden = false;
+  renderStatus();
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
   elements.notesList.replaceChildren(
     ...(notes.length ? notes.map(createNoteCard) : [createEmptyNote()])
   );
+}
+
+function renderStatus() {
+  const items = Array.isArray(state.status.items) ? state.status.items : [];
+  elements.statusWidget.hidden = !items.length && !state.statusLoading;
+  elements.refreshStatusButton.disabled = state.statusLoading;
+  elements.refreshStatusButton.textContent = state.statusLoading ? "Lädt..." : "Aktualisieren";
+  elements.statusList.replaceChildren(
+    ...(items.length ? items.map(createStatusCard) : [createEmptyStatus()])
+  );
+  elements.statusUpdated.textContent = state.status.updatedAt
+    ? `Stand ${new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(new Date(state.status.updatedAt))}`
+    : "";
+}
+
+function createStatusCard(item) {
+  const card = document.createElement("article");
+  card.className = `service-card is-${item.status || "offline"}`;
+
+  const head = document.createElement("div");
+  head.className = "service-head";
+  const title = document.createElement("div");
+  const name = document.createElement("strong");
+  name.textContent = item.name;
+  const type = document.createElement("span");
+  type.textContent = formatStatusType(item.type);
+  title.append(name, type);
+  const badge = document.createElement("span");
+  badge.className = "service-badge";
+  badge.textContent = item.status === "online" ? "Online" : item.status === "warning" ? "Warnung" : "Offline";
+  head.append(title, badge);
+
+  const message = document.createElement("p");
+  message.className = "service-message";
+  message.textContent = item.message || (item.ok ? "Erreichbar" : "Nicht erreichbar");
+
+  const metrics = document.createElement("div");
+  metrics.className = "service-metrics";
+  const metricItems = Array.isArray(item.metrics) ? item.metrics : [];
+  metrics.replaceChildren(
+    ...(metricItems.length ? metricItems.map(createStatusMetric) : [createStatusMetric({ label: "Status", value: item.ok ? "OK" : "Fehler" })])
+  );
+
+  card.append(head, message, metrics);
+  return card;
+}
+
+function createStatusMetric(metric) {
+  const item = document.createElement("span");
+  item.className = "service-metric";
+  const label = document.createElement("small");
+  label.textContent = metric.label;
+  const value = document.createElement("strong");
+  value.textContent = metric.value;
+  item.append(label, value);
+  return item;
+}
+
+function createEmptyStatus() {
+  const empty = document.createElement("p");
+  empty.className = "empty-note";
+  empty.textContent = "Keine Statusquellen konfiguriert";
+  return empty;
+}
+
+function formatStatusType(type) {
+  const names = {
+    proxmox: "Proxmox",
+    unraid: "Unraid",
+    amp: "AMP",
+    basic: "Service"
+  };
+  return names[type] || type || "Service";
 }
 
 function renderSearch() {
@@ -628,6 +722,7 @@ elements.addButton.addEventListener("click", () => openLinkDialog());
 elements.categoriesButton.addEventListener("click", openCategoriesDialog);
 elements.settingsButton.addEventListener("click", openSettingsDialog);
 elements.importButton.addEventListener("click", () => canEdit() ? elements.importDialog.showModal() : openAdminDialog());
+elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch((error) => showToast(error.message)));
 elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error) => showToast(error.message)));
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
 elements.deleteButton.addEventListener("click", () => deleteLink().catch((error) => showToast(error.message)));
@@ -662,4 +757,5 @@ elements.adminSubmitButton.addEventListener("click", () => submitAdmin().catch((
 
 updateClock();
 window.setInterval(updateClock, 1000);
+window.setInterval(() => loadStatus().catch(() => {}), 60000);
 loadData().catch((error) => showToast(error.message));

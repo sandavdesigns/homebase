@@ -9,6 +9,7 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 - Automatisch gruppierte Kategorien mit alphabetischer Sortierung
 - JSON-Import und JSON-Export der aktuellen Konfiguration
 - Automatischer Favicon-Abruf mit lokalem Cache
+- Optionale Statuskarten fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
 - Themes: Retro, Time Circuit, Dark, Light und Terminal
 - Optionaler Admin-Modus mit Passwortschutz fuer Bearbeitung
 - Widgets fuer Uhr und mehrere Notizen
@@ -95,6 +96,7 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 | `HOMEBASE_CONTAINER_NAME` | `homebase` | Name des Containers. |
 | `HOMEBASE_VOLUME_NAME` | `homebase_data` | Name des Docker-Volumes fuer Daten und Favicons. |
 | `ADMIN_PASSWORD` | leer | Optionales Admin-Passwort. Alternativ kann das Passwort beim ersten Start im Setup gesetzt werden. |
+| `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Statuskarten. Secrets bleiben in der Container-Umgebung. |
 
 Container-interne Variablen:
 
@@ -209,6 +211,43 @@ Diese Version enthaelt diese Widgets:
 - Datum
 - Uhrzeit
 - Mehrere Notizen
+- Systemstatus, wenn `HOMEBASE_STATUS_TARGETS` konfiguriert ist
+
+## Status Integrationen
+
+Statuskarten werden ueber die Environment-Variable `HOMEBASE_STATUS_TARGETS` konfiguriert. Das ist bewusst kein Browser-Dialog, damit API-Token nicht im JSON-Export oder in der sichtbaren App-Konfiguration landen.
+
+Minimal ohne API-Zugangsdaten:
+
+```text
+HOMEBASE_STATUS_TARGETS=[{"type":"unraid","name":"Unraid","url":"http://192.168.1.10"},{"type":"amp","name":"AMP","url":"https://amp.example.local"}]
+```
+
+Proxmox mit API-Token:
+
+```text
+HOMEBASE_STATUS_TARGETS=[{"type":"proxmox","name":"Proxmox","url":"https://192.168.1.15:8006","tokenId":"root@pam!homebase","tokenSecret":"dein-token-secret"}]
+```
+
+Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt es zusaetzlich Nodes, laufende VM/CT und RAM-Nutzung an.
+
+Unraid mit API-Key nutzt die GraphQL-API unter `/graphql` und zeigt Array-, Docker- und Systemdaten:
+
+```text
+HOMEBASE_STATUS_TARGETS=[{"type":"unraid","name":"Unraid","url":"http://192.168.1.10","apiKey":"dein-api-key"}]
+```
+
+AMP kann mit Benutzername und Passwort `Core/Login` und `Core/GetStatus` abfragen:
+
+```text
+HOMEBASE_STATUS_TARGETS=[{"type":"amp","name":"AMP","url":"https://amp.example.local","username":"admin","password":"dein-passwort"}]
+```
+
+Optional kannst du `statusPath`, `headerName` und `headerValue` setzen, wenn ein Dienst einen eigenen Health-Endpunkt oder API-Key erwartet:
+
+```text
+HOMEBASE_STATUS_TARGETS=[{"type":"amp","name":"AMP","url":"https://amp.example.local","statusPath":"/health","headerName":"Authorization","headerValue":"Bearer token"}]
+```
 
 ## Updates
 
