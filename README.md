@@ -47,5 +47,6 @@ Die Links werden im Docker-Volume `homebase_data` gespeichert. Den Volume-Namen 
 
 - `+ Link` legt neue Links an.
 - `...` an einem Link bearbeitet oder löscht ihn.
+- `Kategorien` verwaltet Gruppen, Reihenfolge und Umbenennungen zentral.
 - `Titel` ändert Titel und Untertitel.
 - `Export` lädt die aktuelle JSON-Konfiguration herunter.

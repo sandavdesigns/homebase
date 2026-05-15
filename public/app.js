@@ -1,6 +1,7 @@
 const state = {
   title: "Startseite",
   subtitle: "",
+  categories: [],
   links: [],
   query: ""
 };
@@ -24,9 +25,11 @@ const elements = {
   empty: document.querySelector("#emptyState"),
   search: document.querySelector("#searchInput"),
   addButton: document.querySelector("#addButton"),
+  categoriesButton: document.querySelector("#categoriesButton"),
   settingsButton: document.querySelector("#settingsButton"),
   editorDialog: document.querySelector("#editorDialog"),
   settingsDialog: document.querySelector("#settingsDialog"),
+  categoriesDialog: document.querySelector("#categoriesDialog"),
   dialogTitle: document.querySelector("#dialogTitle"),
   linkForm: document.querySelector("#linkForm"),
   linkId: document.querySelector("#linkId"),
@@ -41,8 +44,13 @@ const elements = {
   settingsTitle: document.querySelector("#settingsTitle"),
   settingsSubtitle: document.querySelector("#settingsSubtitle"),
   saveSettingsButton: document.querySelector("#saveSettingsButton"),
+  categoryEditor: document.querySelector("#categoryEditor"),
+  addCategoryButton: document.querySelector("#addCategoryButton"),
+  saveCategoriesButton: document.querySelector("#saveCategoriesButton"),
   toast: document.querySelector("#toast")
 };
+
+let categoryDrafts = [];
 
 function updateClock() {
   const now = new Date();
@@ -70,9 +78,10 @@ async function saveData(message = "Gespeichert") {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      schemaVersion: state.schemaVersion || 2,
+      schemaVersion: state.schemaVersion || 3,
       title: state.title,
       subtitle: state.subtitle,
+      categories: state.categories,
       links: state.links
     })
   });
@@ -96,7 +105,7 @@ function render() {
 }
 
 function renderCategoryList() {
-  const categories = [...new Set(state.links.map((link) => link.category).filter(Boolean))].sort(compareCategories);
+  const categories = getCategoryNames();
   elements.categoryList.replaceChildren(
     ...categories.map((category) => {
       const option = document.createElement("option");
@@ -118,6 +127,11 @@ function renderGroups() {
     groups.set(category, [...(groups.get(category) || []), link]);
     return groups;
   }, new Map());
+  if (!query) {
+    for (const category of getCategoryNames()) {
+      if (!grouped.has(category)) grouped.set(category, []);
+    }
+  }
 
   elements.groups.replaceChildren(
     ...[...grouped.entries()].sort(([a], [b]) => compareCategories(a, b)).map(([category, groupLinks]) => {
@@ -129,7 +143,14 @@ function renderGroups() {
 
       const list = document.createElement("div");
       list.className = "link-list";
-      list.replaceChildren(...groupLinks.sort((a, b) => a.title.localeCompare(b.title, "de")).map(createLinkCard));
+      if (groupLinks.length) {
+        list.replaceChildren(...groupLinks.sort((a, b) => a.title.localeCompare(b.title, "de")).map(createLinkCard));
+      } else {
+        const empty = document.createElement("p");
+        empty.className = "empty-category";
+        empty.textContent = "Noch leer";
+        list.append(empty);
+      }
 
       section.append(heading, list);
       return section;
@@ -140,12 +161,38 @@ function renderGroups() {
 }
 
 function compareCategories(a, b) {
-  const aIndex = preferredCategoryOrder.indexOf(a);
-  const bIndex = preferredCategoryOrder.indexOf(b);
+  const orderedNames = getCategoryNames();
+  const aIndex = orderedNames.indexOf(a);
+  const bIndex = orderedNames.indexOf(b);
   if (aIndex >= 0 || bIndex >= 0) {
     return (aIndex >= 0 ? aIndex : 999) - (bIndex >= 0 ? bIndex : 999);
   }
   return a.localeCompare(b, "de");
+}
+
+function getCategoryNames() {
+  const names = [];
+  const seen = new Set();
+  const source = state.categories.length
+    ? state.categories
+    : preferredCategoryOrder.map((name) => ({ name }));
+
+  for (const category of source) {
+    const name = String(category.name || "").trim();
+    if (name && !seen.has(name)) {
+      names.push(name);
+      seen.add(name);
+    }
+  }
+
+  for (const link of state.links) {
+    if (link.category && !seen.has(link.category)) {
+      names.push(link.category);
+      seen.add(link.category);
+    }
+  }
+
+  return names;
 }
 
 function createLinkCard(link) {
@@ -184,7 +231,7 @@ function openLinkDialog(link = null) {
   elements.linkId.value = link?.id || "";
   elements.linkTitle.value = link?.title || "";
   elements.linkUrl.value = link?.url || "";
-  elements.linkCategory.value = link?.category || "Zuhause";
+  elements.linkCategory.value = link?.category || getCategoryNames()[0] || "Links";
   elements.linkNote.value = link?.note || "";
   elements.deleteButton.hidden = !link;
   elements.editorDialog.showModal();
@@ -196,6 +243,117 @@ function openSettingsDialog() {
   elements.settingsSubtitle.value = state.subtitle;
   elements.settingsDialog.showModal();
   elements.settingsTitle.focus();
+}
+
+function openCategoriesDialog() {
+  categoryDrafts = getCategoryNames().map((name) => {
+    const category = state.categories.find((candidate) => candidate.name === name);
+    return {
+      id: category?.id || createId(),
+      originalName: name,
+      name
+    };
+  });
+  renderCategoryEditor();
+  elements.categoriesDialog.showModal();
+}
+
+function renderCategoryEditor() {
+  elements.categoryEditor.replaceChildren(
+    ...categoryDrafts.map((category, index) => {
+      const row = document.createElement("div");
+      row.className = "category-row";
+
+      const input = document.createElement("input");
+      input.value = category.name;
+      input.maxLength = 40;
+      input.ariaLabel = "Kategoriename";
+      input.addEventListener("input", (event) => {
+        category.name = event.target.value;
+      });
+
+      const up = document.createElement("button");
+      up.type = "button";
+      up.textContent = "↑";
+      up.ariaLabel = `${category.name || "Kategorie"} nach oben`;
+      up.disabled = index === 0;
+      up.addEventListener("click", () => moveCategory(index, -1));
+
+      const down = document.createElement("button");
+      down.type = "button";
+      down.textContent = "↓";
+      down.ariaLabel = `${category.name || "Kategorie"} nach unten`;
+      down.disabled = index === categoryDrafts.length - 1;
+      down.addEventListener("click", () => moveCategory(index, 1));
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "danger subtle-danger";
+      remove.textContent = "Löschen";
+      remove.addEventListener("click", () => {
+        categoryDrafts.splice(index, 1);
+        renderCategoryEditor();
+      });
+
+      row.append(input, up, down, remove);
+      return row;
+    })
+  );
+}
+
+function moveCategory(index, offset) {
+  const target = index + offset;
+  if (target < 0 || target >= categoryDrafts.length) return;
+  const [category] = categoryDrafts.splice(index, 1);
+  categoryDrafts.splice(target, 0, category);
+  renderCategoryEditor();
+}
+
+function addCategory() {
+  categoryDrafts.push({
+    id: createId(),
+    originalName: "",
+    name: "Neue Kategorie"
+  });
+  renderCategoryEditor();
+}
+
+async function saveCategories() {
+  const seen = new Set();
+  const nextCategories = categoryDrafts
+    .map((category) => ({
+      id: category.id || createId(),
+      originalName: category.originalName,
+      name: category.name.trim()
+    }))
+    .filter((category) => {
+      if (!category.name || seen.has(category.name)) return false;
+      seen.add(category.name);
+      return true;
+    });
+
+  const renames = new Map();
+  for (const category of nextCategories) {
+    if (category.originalName && category.originalName !== category.name) {
+      renames.set(category.originalName, category.name);
+    }
+  }
+  const nextNames = new Set(nextCategories.map((category) => category.name));
+
+  state.links = state.links.map((link) => {
+    const renamedCategory = renames.get(link.category);
+    if (renamedCategory) return { ...link, category: renamedCategory };
+    if (!nextNames.has(link.category)) return { ...link, category: "Links" };
+    return link;
+  });
+
+  if (state.links.some((link) => link.category === "Links") && !nextNames.has("Links")) {
+    nextCategories.push({ id: createId(), name: "Links" });
+  }
+
+  state.categories = nextCategories.map(({ id, name }) => ({ id, name }));
+  await saveData("Kategorien gespeichert");
+  elements.categoriesDialog.close();
 }
 
 async function saveLink() {
@@ -257,10 +415,13 @@ elements.search.addEventListener("input", (event) => {
   renderGroups();
 });
 elements.addButton.addEventListener("click", () => openLinkDialog());
+elements.categoriesButton.addEventListener("click", openCategoriesDialog);
 elements.settingsButton.addEventListener("click", openSettingsDialog);
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
 elements.deleteButton.addEventListener("click", () => deleteLink().catch((error) => showToast(error.message)));
 elements.saveSettingsButton.addEventListener("click", () => saveSettings().catch((error) => showToast(error.message)));
+elements.addCategoryButton.addEventListener("click", addCategory);
+elements.saveCategoriesButton.addEventListener("click", () => saveCategories().catch((error) => showToast(error.message)));
 
 updateClock();
 window.setInterval(updateClock, 1000);

@@ -9,10 +9,21 @@ const DATA_DIR = process.env.DATA_DIR || "/data";
 const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const PUBLIC_DIR = path.join(__dirname, "public");
 
+const defaultCategories = [
+  "Business",
+  "Server",
+  "Netzwerk",
+  "Smart Home",
+  "Sicherheit",
+  "Werkstatt",
+  "Medien"
+].map((name) => ({ id: crypto.randomUUID(), name }));
+
 const defaultData = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   title: "Davids Startseite",
   subtitle: "Neon-Kommandozentrale fuer Alltag, Server und Shop",
+  categories: defaultCategories,
   links: [
     {
       id: crypto.randomUUID(),
@@ -206,7 +217,7 @@ function readData() {
 
 function writeData(data) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const safeData = normalizeData({ ...data, schemaVersion: data.schemaVersion || 2 });
+  const safeData = normalizeData({ ...data, schemaVersion: data.schemaVersion || 3 });
   fs.writeFileSync(DATA_FILE, `${JSON.stringify(safeData, null, 2)}\n`);
   return safeData;
 }
@@ -215,26 +226,51 @@ function normalizeData(data) {
   const title = String(data.title || "Startseite").slice(0, 80);
   const subtitle = String(data.subtitle || "").slice(0, 140);
   const links = Array.isArray(data.links) ? data.links : [];
+  const normalizedLinks = links
+    .map((link) => ({
+      id: String(link.id || crypto.randomUUID()),
+      title: String(link.title || "Ohne Titel").slice(0, 80),
+      url: normalizeUrl(String(link.url || "")),
+      category: String(link.category || "Links").slice(0, 40),
+      note: String(link.note || "").slice(0, 120)
+    }))
+    .filter((link) => link.url);
 
   return {
     schemaVersion: Number(data.schemaVersion || 1),
     title,
     subtitle,
-    links: links
-      .map((link) => ({
-        id: String(link.id || crypto.randomUUID()),
-        title: String(link.title || "Ohne Titel").slice(0, 80),
-        url: normalizeUrl(String(link.url || "")),
-        category: String(link.category || "Links").slice(0, 40),
-        note: String(link.note || "").slice(0, 120)
-      }))
-      .filter((link) => link.url)
+    categories: normalizeCategories(data.categories, normalizedLinks),
+    links: normalizedLinks
   };
+}
+
+function normalizeCategories(categories, links) {
+  const seen = new Set();
+  const normalizedCategories = (Array.isArray(categories) ? categories : [])
+    .map((category) => ({
+      id: String(category.id || crypto.randomUUID()),
+      name: String(category.name || "").trim().slice(0, 40)
+    }))
+    .filter((category) => {
+      if (!category.name || seen.has(category.name)) return false;
+      seen.add(category.name);
+      return true;
+    });
+
+  for (const link of links) {
+    if (!seen.has(link.category)) {
+      normalizedCategories.push({ id: crypto.randomUUID(), name: link.category });
+      seen.add(link.category);
+    }
+  }
+
+  return normalizedCategories.length ? normalizedCategories : defaultCategories;
 }
 
 function migrateData(data) {
   const normalized = normalizeData(data);
-  if (normalized.schemaVersion >= 2) return normalized;
+  const originalVersion = normalized.schemaVersion;
 
   const categoriesByTitle = new Map([
     ["AdGuard", "Netzwerk"],
@@ -257,12 +293,16 @@ function migrateData(data) {
     ["Vaultwarden", "Sicherheit"]
   ]);
 
-  normalized.schemaVersion = 2;
+  if (originalVersion < 2) {
+    normalized.links = normalized.links.map((link) => ({
+      ...link,
+      category: categoriesByTitle.get(link.title) || link.category
+    }));
+  }
+
+  normalized.schemaVersion = 3;
   normalized.subtitle = normalized.subtitle || defaultData.subtitle;
-  normalized.links = normalized.links.map((link) => ({
-    ...link,
-    category: categoriesByTitle.get(link.title) || link.category
-  }));
+  normalized.categories = normalizeCategories(originalVersion < 2 ? [] : normalized.categories, normalized.links);
 
   return normalized;
 }

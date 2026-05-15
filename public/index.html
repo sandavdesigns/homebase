@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=retro2" />
+    <link rel="stylesheet" href="/styles.css?v=retro3" />
   </head>
   <body>
     <main class="shell">
@@ -26,6 +26,7 @@
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
         </label>
         <button class="primary" id="addButton" type="button">+ Link</button>
+        <button id="categoriesButton" type="button">Kategorien</button>
         <button id="settingsButton" type="button">Titel</button>
         <a class="button" href="/api/homebase/export">Export</a>
       </section>
@@ -94,7 +95,23 @@
       </form>
     </dialog>
 
+    <dialog id="categoriesDialog">
+      <form method="dialog" class="dialog-card wide-dialog" id="categoriesForm">
+        <header>
+          <h2>Kategorien</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <div class="category-editor" id="categoryEditor"></div>
+        <footer>
+          <button id="addCategoryButton" type="button">+ Kategorie</button>
+          <span></span>
+          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
+          <button class="primary" id="saveCategoriesButton" value="default" type="button">Speichern</button>
+        </footer>
+      </form>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=retro2"></script>
+    <script src="/app.js?v=retro3"></script>
   </body>
 </html>
