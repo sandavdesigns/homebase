@@ -1,9 +1,17 @@
 services:
   homebase:
     build: .
-    container_name: homebase
+    container_name: ${HOMEBASE_CONTAINER_NAME:-homebase}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${HOMEBASE_PORT:-3000}:${HOMEBASE_INTERNAL_PORT:-3000}"
+    environment:
+      PORT: ${HOMEBASE_INTERNAL_PORT:-3000}
+      HOST: 0.0.0.0
+      DATA_DIR: /data
     volumes:
-      - ./data:/data
+      - homebase_data:/data
+
+volumes:
+  homebase_data:
+    name: ${HOMEBASE_VOLUME_NAME:-homebase_data}
