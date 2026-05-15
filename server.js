@@ -15,23 +15,163 @@ const defaultData = {
   links: [
     {
       id: crypto.randomUUID(),
-      title: "Homepage",
-      url: "http://192.168.1.16:3000/",
-      category: "Zuhause",
-      note: "Bisherige Startseite"
+      title: "AdGuard",
+      url: "http://192.168.1.20/",
+      category: "Dienste",
+      note: ""
     },
     {
       id: crypto.randomUUID(),
-      title: "Google",
-      url: "https://www.google.com/",
-      category: "Suche",
+      title: "Immich",
+      url: "https://photo.sandav.de/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Nginx",
+      url: "http://192.168.1.19:81/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Home Assistant",
+      url: "http://192.168.1.5:8123/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Homematic",
+      url: "http://192.168.1.4/login.htm",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Valetudo",
+      url: "http://192.168.1.186/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Homeserver (DS214)",
+      url: "http://192.168.1.180:5000/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Docker",
+      url: "https://192.168.1.27:9443/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "iDRAC pve-node01",
+      url: "https://192.168.1.162/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "iDRAC pve-node02",
+      url: "https://192.168.1.146/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "PVE Node01",
+      url: "https://192.168.1.15:8006/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "FritzBox 7530",
+      url: "http://192.168.1.2/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "FritzBox 7590",
+      url: "http://192.168.1.1/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Mikrotik",
+      url: "http://192.168.1.7/",
+      category: "Dienste",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Ebay",
+      url: "https://www.ebay.de/sh/ovw",
+      category: "Business",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Etsy",
+      url: "https://www.etsy.com/de/your/shops/me/dashboard?ref=hdr-mcpa",
+      category: "Business",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Kasuwa",
+      url: "https://www.kasuwa.de/shop/sandavdesigns",
+      category: "Business",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "SandavDesigns",
+      url: "https://sandavdesigns.de/",
+      category: "Business",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Billbee",
+      url: "https://app.billbee.io/app_v2/",
+      category: "Business",
       note: ""
     },
     {
       id: crypto.randomUUID(),
       title: "YouTube",
-      url: "https://www.youtube.com/",
+      url: "https://youtube.com/",
       category: "Medien",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "SVG-3D Tool",
+      url: "http://192.168.1.27:4173/",
+      category: "Tools",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "SD-Lernsystem",
+      url: "http://192.168.1.27:8080/",
+      category: "Tools",
+      note: ""
+    },
+    {
+      id: crypto.randomUUID(),
+      title: "Vaultwarden",
+      url: "https://vaultwarden.sandav.de/",
+      category: "Tools",
       note: ""
     }
   ]
