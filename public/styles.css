@@ -695,8 +695,8 @@ body[data-theme="time-circuit"] .group h2 {
 .link-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   align-items: center;
   min-height: 68px;
   border: 1px solid transparent;
@@ -785,6 +785,7 @@ body[data-theme="time-circuit"] .link-card:hover {
 
 .link-content {
   min-width: 0;
+  padding-right: 22px;
   color: inherit;
   text-decoration: none;
 }
@@ -890,14 +891,21 @@ body[data-theme="time-circuit"] .link-title {
 }
 
 .edit-link {
-  width: 34px;
-  min-height: 34px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  width: 26px;
+  min-height: 26px;
+  border-radius: 7px;
   padding: 0;
+  font-size: 0.78rem;
+  line-height: 1;
   color: var(--accent);
-  background: color-mix(in srgb, var(--panel-strong), black 18%);
+  background: color-mix(in srgb, var(--panel-strong), black 32%);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 0 14px color-mix(in srgb, var(--accent-2), transparent 88%);
+    0 0 10px color-mix(in srgb, var(--accent-2), transparent 88%);
 }
 
 .empty-category {
