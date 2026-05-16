@@ -648,6 +648,7 @@ async function readAmpStatus(target, base) {
     ok: true,
     status: "online",
     message: getAmpStatusMessage(source),
+    details: getAmpInstanceDetails(mergedInstances),
     metrics,
     debug: target.debug === true ? getAmpDebugLines(source, mergedInstances) : []
   };
@@ -844,6 +845,32 @@ function getAmpInstanceId(instance) {
   );
 }
 
+function getAmpInstanceName(instance, fallback = "Instanz") {
+  return String(
+    instance?.FriendlyName ||
+    instance?.InstanceName ||
+    instance?.DisplayName ||
+    instance?.Name ||
+    instance?.name ||
+    fallback
+  );
+}
+
+function getAmpInstanceDetails(instances) {
+  return instances.slice(0, 6).map((instance, index) => {
+    const online = isAmpInstanceOnline(instance);
+    const memory = readAmpMemoryMb(instance);
+    const users = readAmpUsersOnline(instance);
+    const detailParts = [online ? "läuft" : "aus"];
+    if (memory !== undefined) detailParts.push(formatAmpMetric(memory, "MB"));
+    if (users !== undefined) detailParts.push(`${users} User`);
+    return {
+      label: getAmpInstanceName(instance, `Instanz ${index + 1}`).slice(0, 40),
+      value: detailParts.join(" · ")
+    };
+  });
+}
+
 function isAmpInstanceLike(value) {
   return Boolean(value && typeof value === "object" && (
     value.InstanceID ||
@@ -1014,7 +1041,7 @@ function getAmpDebugLines(source, instances) {
   const lines = [];
   lines.push(`ADS state=${shortDebugValue(source?.State ?? source?.state ?? source?.Status ?? source?.status ?? "n/a")}`);
   instances.slice(0, 8).forEach((instance, index) => {
-    const name = instance.FriendlyName || instance.InstanceName || instance.DisplayName || instance.Name || `Instanz ${index + 1}`;
+    const name = getAmpInstanceName(instance, `Instanz ${index + 1}`);
     const state = readAmpApplicationState(instance);
     const raw = [
       `app=${shortDebugValue(instance.AppState ?? instance.app_state)}`,

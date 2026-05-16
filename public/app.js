@@ -293,6 +293,8 @@ function createStatusCard(item) {
   );
 
   card.append(head, message, metrics);
+  const details = createStatusDetails(item.details);
+  if (details) card.append(details);
   return card;
 }
 
@@ -305,6 +307,23 @@ function createStatusMetric(metric) {
   value.textContent = metric.value;
   item.append(label, value);
   return item;
+}
+
+function createStatusDetails(details) {
+  const detailItems = Array.isArray(details) ? details.slice(0, 6) : [];
+  if (!detailItems.length) return null;
+  const list = document.createElement("div");
+  list.className = "status-details";
+  list.replaceChildren(...detailItems.map((detail) => {
+    const row = document.createElement("p");
+    const label = document.createElement("span");
+    label.textContent = detail.label || "Status";
+    const value = document.createElement("strong");
+    value.textContent = detail.value || "";
+    row.append(label, value);
+    return row;
+  }));
+  return list;
 }
 
 function createEmptyStatus() {
@@ -518,6 +537,8 @@ function createLinkStatus(status) {
 
   panel.append(line);
   if (metricItems.length) panel.append(metrics);
+  const details = createStatusDetails(status.details);
+  if (details) panel.append(details);
   if (Array.isArray(status.debug) && status.debug.length) {
     const debug = document.createElement("pre");
     debug.className = "link-status-debug";

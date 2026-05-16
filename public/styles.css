@@ -591,6 +591,38 @@ textarea:focus {
   font-weight: 750;
 }
 
+.status-details {
+  display: grid;
+  gap: 5px;
+}
+
+.status-details p {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  border-radius: 7px;
+  padding: 5px 7px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.14);
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.status-details span,
+.status-details strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-details strong {
+  color: var(--text);
+  font-weight: 750;
+}
+
 .status-updated {
   margin-top: 10px;
 }
