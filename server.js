@@ -624,9 +624,13 @@ async function readAmpStatus(target, base) {
   const memory = source.MemoryUsageMB ?? ampMetrics["Memory Usage"]?.RawValue ?? ampMetrics.Memory?.RawValue;
   const users = source.UsersOnline ?? ampMetrics["Active Users"]?.RawValue ?? ampMetrics.Users?.RawValue;
   const instances = await readAmpInstances(target, sessionId);
-  if (instances.length) {
-    const online = instances.filter(isAmpInstanceOnline).length;
-    metrics.push({ label: "Server", value: `${online}/${instances.length}` });
+  const instanceStatuses = await readAmpInstanceStatuses(target, sessionId);
+  const totalInstances = instances.length || instanceStatuses.length;
+  if (totalInstances) {
+    const online = instanceStatuses.length
+      ? instanceStatuses.filter(isAmpInstanceOnline).length
+      : instances.filter(isAmpInstanceOnline).length;
+    metrics.push({ label: "Server", value: `${online}/${totalInstances}` });
   }
   if (cpu !== undefined) metrics.push({ label: "CPU", value: formatAmpMetric(cpu, "%") });
   if (memory !== undefined) metrics.push({ label: "RAM", value: formatAmpMetric(memory, "MB") });
@@ -644,6 +648,17 @@ async function readAmpStatus(target, base) {
 async function readAmpInstances(target, sessionId) {
   try {
     const response = await requestJsonPost(new URL("/API/ADSModule/GetInstances", target.url).href, {
+      body: { SESSIONID: sessionId }
+    });
+    return extractAmpInstances(response);
+  } catch {
+    return [];
+  }
+}
+
+async function readAmpInstanceStatuses(target, sessionId) {
+  try {
+    const response = await requestJsonPost(new URL("/API/ADSModule/GetInstanceStatuses", target.url).href, {
       body: { SESSIONID: sessionId }
     });
     return extractAmpInstances(response);
@@ -685,19 +700,30 @@ function isAmpInstanceLike(value) {
     value.Module ||
     value.ModuleName ||
     value.AppState ||
+    value.app_state ||
     value.State ||
+    value.state ||
     value.Status ||
+    value.status ||
     value.Running !== undefined
+    || value.running !== undefined
+    || value.IsRunning !== undefined
+    || value.is_running !== undefined
   ));
 }
 
 function isAmpInstanceOnline(instance) {
-  if (instance.Running === true || instance.IsRunning === true) return true;
+  const runningValue = instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running;
+  if (runningValue === true || runningValue === 1 || String(runningValue).toLowerCase() === "true") return true;
   const state = String(
     instance.Status ??
+    instance.status ??
     instance.State ??
+    instance.state ??
     instance.AppState ??
+    instance.app_state ??
     instance.CurrentState ??
+    instance.current_state ??
     ""
   ).toLowerCase();
   return /\b(running|started|online|ready|active|available)\b/.test(state);
