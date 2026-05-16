@@ -252,7 +252,7 @@ button:disabled,
 
 .topbar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: center;
   margin-bottom: 12px;
@@ -286,7 +286,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 12px 9px;
-  text-align: left;
+  text-align: center;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%),
     radial-gradient(circle at 50% 0, color-mix(in srgb, var(--accent-2), transparent 76%), transparent 58%),
@@ -1331,7 +1331,7 @@ dialog::backdrop {
   }
 
   .topbar {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
   }
 
