@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=prefs1" />
+    <link rel="stylesheet" href="/styles.css?v=settings2" />
   </head>
   <body>
     <main class="shell">
@@ -48,10 +48,7 @@
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
         </label>
         <button class="primary admin-only" id="addButton" type="button">+ Link</button>
-        <button class="admin-only" id="categoriesButton" type="button">Kategorien</button>
         <button class="admin-only" id="settingsButton" type="button">Einstellungen</button>
-        <button class="admin-only" id="importButton" type="button">Import</button>
-        <a class="button admin-only" href="/api/homebase/export">Export</a>
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
@@ -180,6 +177,11 @@
             <span>Links in neuem Tab öffnen</span>
           </label>
         </div>
+        <div class="settings-actions" aria-label="Verwaltung">
+          <button id="settingsCategoriesButton" type="button">Kategorien</button>
+          <button id="settingsImportButton" type="button">Import</button>
+          <a class="button" href="/api/homebase/export">Export</a>
+        </div>
         <footer>
           <span></span>
           <span></span>
@@ -267,6 +269,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=prefs1"></script>
+    <script src="/app.js?v=settings2"></script>
   </body>
 </html>

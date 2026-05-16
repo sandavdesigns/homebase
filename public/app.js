@@ -28,9 +28,7 @@ const elements = {
   searchPanel: document.querySelector("#searchPanel"),
   searchToggleButton: document.querySelector("#searchToggleButton"),
   addButton: document.querySelector("#addButton"),
-  categoriesButton: document.querySelector("#categoriesButton"),
   settingsButton: document.querySelector("#settingsButton"),
-  importButton: document.querySelector("#importButton"),
   adminButton: document.querySelector("#adminButton"),
   profileSelect: document.querySelector("#profileSelect"),
   newProfileButton: document.querySelector("#newProfileButton"),
@@ -77,6 +75,8 @@ const elements = {
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
+  settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
+  settingsImportButton: document.querySelector("#settingsImportButton"),
   saveSettingsButton: document.querySelector("#saveSettingsButton"),
   categoryEditor: document.querySelector("#categoryEditor"),
   addCategoryButton: document.querySelector("#addCategoryButton"),
@@ -795,9 +795,16 @@ elements.searchToggleButton.addEventListener("click", () => {
   if (state.searchOpen) elements.search.focus();
 });
 elements.addButton.addEventListener("click", () => openLinkDialog());
-elements.categoriesButton.addEventListener("click", openCategoriesDialog);
 elements.settingsButton.addEventListener("click", openSettingsDialog);
-elements.importButton.addEventListener("click", () => canEdit() ? elements.importDialog.showModal() : openAdminDialog());
+elements.settingsCategoriesButton.addEventListener("click", () => {
+  elements.settingsDialog.close();
+  openCategoriesDialog();
+});
+elements.settingsImportButton.addEventListener("click", () => {
+  elements.settingsDialog.close();
+  if (canEdit()) elements.importDialog.showModal();
+  else openAdminDialog();
+});
 elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch((error) => showToast(error.message)));
 elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error) => showToast(error.message)));
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));

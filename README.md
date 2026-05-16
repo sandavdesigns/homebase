@@ -286,10 +286,7 @@ Nach dem Update:
 
 - `+ Link` legt neue Links an.
 - `...` an einem Link bearbeitet oder loescht ihn.
-- `Kategorien` verwaltet Gruppen und Umbenennungen zentral.
 - `+ Profil` erstellt ein weiteres Profil.
-- `Import` ersetzt die aktuelle Konfiguration durch JSON.
-- `Einstellungen` aendert Titel, Untertitel und Anzeigeoptionen.
-- `Export` laedt die aktuelle JSON-Konfiguration herunter.
+- `Einstellungen` aendert Titel, Untertitel, Anzeigeoptionen, Kategorien, Import und Export.
 
 Kategorien und Links werden alphabetisch angezeigt. Linkkarten zeigen Titel, Favicon und optionale Notiz; die URL bleibt als Klickziel hinterlegt, wird aber nicht extra angezeigt.

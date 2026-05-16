@@ -933,13 +933,23 @@ dialog::backdrop {
   font-weight: 750;
 }
 
-.settings-options {
+.settings-options,
+.settings-actions {
   display: grid;
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.045);
+}
+
+.settings-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-actions button,
+.settings-actions .button {
+  width: 100%;
 }
 
 .dialog-card .toggle-row {
