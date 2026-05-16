@@ -31,7 +31,7 @@ docker compose up -d
 Danach ist Homebase unter `http://localhost:3000` erreichbar. Im Heimnetz nutzt du die IP des Docker-Hosts, zum Beispiel:
 
 ```text
-http://192.168.1.16:3000/
+http://<server-ip>:3000/
 ```
 
 Beim ersten Start erscheint ein Setup-Dialog. Dort legst du Seitentitel, erstes Profil und ein Admin-Passwort fest.
@@ -244,7 +244,7 @@ Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt e
 Status-Zugangsdaten werden in `homebase.json` gespeichert und sind damit auch im JSON-Export enthalten. Wenn du Secrets lieber ausschliesslich als Container-Environment halten willst, funktioniert `HOMEBASE_STATUS_TARGETS` weiterhin als Fallback:
 
 ```text
-HOMEBASE_STATUS_TARGETS=[{"type":"proxmox","name":"Proxmox","url":"https://192.168.1.15:8006","tokenId":"root@pam!homebase","tokenSecret":"dein-token-secret"}]
+HOMEBASE_STATUS_TARGETS=[{"type":"proxmox","name":"Proxmox","url":"https://<proxmox-ip>:8006","tokenId":"root@pam!homebase","tokenSecret":"dein-token-secret"}]
 ```
 
 ## Updates

@@ -236,31 +236,10 @@ function migrateData(data) {
   const normalized = normalizeData(data);
   const originalVersion = normalized.schemaVersion;
 
-  const categoriesByTitle = new Map([
-    ["AdGuard", "Netzwerk"],
-    ["FritzBox 7530", "Netzwerk"],
-    ["FritzBox 7590", "Netzwerk"],
-    ["Mikrotik", "Netzwerk"],
-    ["Home Assistant", "Smart Home"],
-    ["Homematic", "Smart Home"],
-    ["Valetudo", "Smart Home"],
-    ["Homeserver (DS214)", "Server"],
-    ["Docker", "Server"],
-    ["iDRAC pve-node01", "Server"],
-    ["iDRAC pve-node02", "Server"],
-    ["PVE Node01", "Server"],
-    ["Nginx", "Server"],
-    ["Immich", "Medien"],
-    ["YouTube", "Medien"],
-    ["SVG-3D Tool", "Werkstatt"],
-    ["SD-Lernsystem", "Werkstatt"],
-    ["Vaultwarden", "Sicherheit"]
-  ]);
-
   if (originalVersion < 2) {
     normalized.links = normalized.links.map((link) => ({
       ...link,
-      category: categoriesByTitle.get(link.title) || link.category
+      category: link.category || "Links"
     }));
   }
 
