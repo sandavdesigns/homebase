@@ -785,7 +785,6 @@ body[data-theme="time-circuit"] .link-card:hover {
 
 .link-content {
   min-width: 0;
-  padding-right: 22px;
   color: inherit;
   text-decoration: none;
 }
@@ -795,6 +794,7 @@ body[data-theme="time-circuit"] .link-card:hover {
   align-items: center;
   gap: 8px;
   margin: 0;
+  padding-right: 32px;
   font-size: 0.98rem;
   font-weight: 650;
   line-height: 1.2;
