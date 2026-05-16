@@ -934,7 +934,8 @@ dialog::backdrop {
 }
 
 .settings-options,
-.settings-actions {
+.settings-actions,
+.link-widget-config {
   display: grid;
   gap: 8px;
   border: 1px solid var(--line);
@@ -964,6 +965,13 @@ dialog::backdrop {
   width: 18px;
   min-height: 18px;
   accent-color: var(--accent);
+}
+
+.status-config-fields {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
 }
 
 .link-test-row {

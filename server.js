@@ -143,7 +143,8 @@ function normalizeProfile(profile) {
       title: String(link.title || "Ohne Titel").slice(0, 80),
       url: normalizeUrl(String(link.url || "")),
       category: String(link.category || "Links").slice(0, 40),
-      note: String(link.note || "").slice(0, 120)
+      note: String(link.note || "").slice(0, 120),
+      statusWidget: normalizeStatusWidget(link.statusWidget, link.url)
     }))
     .filter((link) => link.url);
 
@@ -184,6 +185,25 @@ function normalizePreferences(preferences) {
     showLinkStatus: preferences?.showLinkStatus !== false,
     showNotes: preferences?.showNotes !== false,
     openLinksInNewTab: preferences?.openLinksInNewTab !== false
+  };
+}
+
+function normalizeStatusWidget(widget, fallbackUrl = "") {
+  const enabled = widget?.enabled === true;
+  return {
+    enabled,
+    type: ["basic", "proxmox", "unraid", "amp"].includes(String(widget?.type || "").toLowerCase())
+      ? String(widget.type).toLowerCase()
+      : "basic",
+    url: normalizeUrl(String(widget?.url || fallbackUrl || "")),
+    statusPath: String(widget?.statusPath || "").slice(0, 160),
+    tokenId: String(widget?.tokenId || "").slice(0, 160),
+    tokenSecret: String(widget?.tokenSecret || "").slice(0, 260),
+    apiKey: String(widget?.apiKey || "").slice(0, 260),
+    username: String(widget?.username || "").slice(0, 160),
+    password: String(widget?.password || "").slice(0, 260),
+    headerName: String(widget?.headerName || "").slice(0, 80),
+    headerValue: String(widget?.headerValue || "").slice(0, 260)
   };
 }
 
@@ -327,16 +347,42 @@ function clearSessionCookie(res) {
 
 function toPublicData(data, req) {
   const { passwordHash, ...publicAdmin } = data.admin || {};
+  const authenticated = isAuthed(req);
+  const publicData = authenticated ? data : redactStatusSecrets(data);
   return {
-    ...data,
+    ...publicData,
     admin: {
       ...publicAdmin,
       enabled: Boolean(ADMIN_PASSWORD || passwordHash)
     },
     auth: {
       enabled: Boolean(ADMIN_PASSWORD || passwordHash),
-      authenticated: isAuthed(req)
+      authenticated
     }
+  };
+}
+
+function redactStatusSecrets(data) {
+  const redactLink = (link) => link.statusWidget ? {
+    ...link,
+    statusWidget: {
+      ...link.statusWidget,
+      tokenId: "",
+      tokenSecret: "",
+      apiKey: "",
+      username: "",
+      password: "",
+      headerValue: ""
+    }
+  } : link;
+  const profiles = (data.profiles || []).map((profile) => ({
+    ...profile,
+    links: (profile.links || []).map(redactLink)
+  }));
+  return {
+    ...data,
+    profiles,
+    links: (data.links || []).map(redactLink)
   };
 }
 
@@ -464,10 +510,27 @@ function publicStatusTarget(target) {
   };
 }
 
+function getConfiguredStatusTargets(data) {
+  const linkTargets = [];
+  for (const profile of data.profiles || []) {
+    for (const link of profile.links || []) {
+      if (!link.statusWidget?.enabled) continue;
+      linkTargets.push({
+        ...link.statusWidget,
+        id: link.id,
+        name: link.title,
+        url: link.statusWidget.url || link.url
+      });
+    }
+  }
+  return [...STATUS_TARGETS, ...linkTargets].filter((target) => target.url && parseHttpUrl(target.url));
+}
+
 async function readStatusTargets() {
-  const items = await Promise.all(STATUS_TARGETS.map(readStatusTarget));
+  const targets = getConfiguredStatusTargets(readData());
+  const items = await Promise.all(targets.map(readStatusTarget));
   return {
-    configured: STATUS_TARGETS.length,
+    configured: targets.length,
     updatedAt: new Date().toISOString(),
     items
   };

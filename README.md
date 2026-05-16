@@ -211,7 +211,7 @@ Diese Version enthaelt diese Widgets:
 - Datum
 - Uhrzeit
 - Mehrere Notizen
-- Link-Statusanzeigen, wenn `HOMEBASE_STATUS_TARGETS` zu vorhandenen Link-URLs oder Linktiteln passt
+- Link-Statusanzeigen, wenn ein Link ein Status-Widget aktiviert hat
 
 ## Einstellungen
 
@@ -222,40 +222,29 @@ Im Browser-Menue `Einstellungen` kannst du Titel und Untertitel pflegen und Anze
 - Notizenbereich anzeigen
 - Links in neuem Tab oeffnen
 
-## Status Integrationen
+## Status Widgets
 
-Statusanzeigen werden ueber die Environment-Variable `HOMEBASE_STATUS_TARGETS` konfiguriert und an passende Linkkarten geheftet. Homebase matcht zuerst ueber denselben URL-Ursprung, zum Beispiel `https://192.168.1.15:8006`, und danach ueber exakt gleiche Namen ohne Leer- und Sonderzeichen. Das ist bewusst kein Browser-Dialog, damit API-Token nicht im JSON-Export oder in der sichtbaren App-Konfiguration landen.
+Statusanzeigen werden direkt am Link gepflegt:
 
-Minimal ohne API-Zugangsdaten:
+- Link bearbeiten oder neu erstellen
+- `Status-Widget an diesem Link` aktivieren
+- Typ auswaehlen
+- Die passenden Zugangsdaten eintragen
 
-```text
-HOMEBASE_STATUS_TARGETS=[{"type":"unraid","name":"Unraid","url":"http://192.168.1.10"},{"type":"amp","name":"AMP","url":"https://amp.example.local"}]
-```
+Wenn die Status-URL leer bleibt, nutzt Homebase die normale Link-URL. Dadurch kannst du mehrere Server vom gleichen Typ als eigene Links mit eigenen Widgets pflegen.
 
 Proxmox mit API-Token:
 
+- Widget: `Proxmox`
+- Token-ID: zum Beispiel `root@pam!homebase`
+- Token-Secret: dein Proxmox API-Token
+
+Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt es zusaetzlich Nodes, laufende VM/CT und RAM-Nutzung an. Unraid nutzt einen API-Key fuer `/graphql`; AMP nutzt Benutzername und Passwort fuer `Core/Login` und `Core/GetStatus`.
+
+Status-Zugangsdaten werden in `homebase.json` gespeichert und sind damit auch im JSON-Export enthalten. Wenn du Secrets lieber ausschliesslich als Container-Environment halten willst, funktioniert `HOMEBASE_STATUS_TARGETS` weiterhin als Fallback:
+
 ```text
 HOMEBASE_STATUS_TARGETS=[{"type":"proxmox","name":"Proxmox","url":"https://192.168.1.15:8006","tokenId":"root@pam!homebase","tokenSecret":"dein-token-secret"}]
-```
-
-Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt es zusaetzlich Nodes, laufende VM/CT und RAM-Nutzung an.
-
-Unraid mit API-Key nutzt die GraphQL-API unter `/graphql` und zeigt Array-, Docker- und Systemdaten:
-
-```text
-HOMEBASE_STATUS_TARGETS=[{"type":"unraid","name":"Unraid","url":"http://192.168.1.10","apiKey":"dein-api-key"}]
-```
-
-AMP kann mit Benutzername und Passwort `Core/Login` und `Core/GetStatus` abfragen:
-
-```text
-HOMEBASE_STATUS_TARGETS=[{"type":"amp","name":"AMP","url":"https://amp.example.local","username":"admin","password":"dein-passwort"}]
-```
-
-Optional kannst du `statusPath`, `headerName` und `headerValue` setzen, wenn ein Dienst einen eigenen Health-Endpunkt oder API-Key erwartet:
-
-```text
-HOMEBASE_STATUS_TARGETS=[{"type":"amp","name":"AMP","url":"https://amp.example.local","statusPath":"/health","headerName":"Authorization","headerValue":"Bearer token"}]
 ```
 
 ## Updates

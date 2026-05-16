@@ -64,6 +64,16 @@ const elements = {
   linkUrl: document.querySelector("#linkUrl"),
   linkCategory: document.querySelector("#linkCategory"),
   linkNote: document.querySelector("#linkNote"),
+  linkStatusEnabled: document.querySelector("#linkStatusEnabled"),
+  linkStatusFields: document.querySelector("#linkStatusFields"),
+  linkStatusType: document.querySelector("#linkStatusType"),
+  linkStatusUrl: document.querySelector("#linkStatusUrl"),
+  linkStatusTokenId: document.querySelector("#linkStatusTokenId"),
+  linkStatusTokenSecret: document.querySelector("#linkStatusTokenSecret"),
+  linkStatusApiKey: document.querySelector("#linkStatusApiKey"),
+  linkStatusUsername: document.querySelector("#linkStatusUsername"),
+  linkStatusPassword: document.querySelector("#linkStatusPassword"),
+  linkStatusPath: document.querySelector("#linkStatusPath"),
   deleteButton: document.querySelector("#deleteButton"),
   saveLinkButton: document.querySelector("#saveLinkButton"),
   testLinkButton: document.querySelector("#testLinkButton"),
@@ -476,6 +486,7 @@ function getStatusForLink(link) {
   const linkOrigin = getUrlOrigin(link.url);
   const title = normalizeMatchText(link.title);
   return items.find((item) => {
+    if (item.id && item.id === link.id) return true;
     const itemOrigin = getUrlOrigin(item.url);
     if (linkOrigin && itemOrigin && linkOrigin === itemOrigin) return true;
     const itemName = normalizeMatchText(item.name);
@@ -530,10 +541,33 @@ function openLinkDialog(link = null) {
   renderCategoryList();
   elements.linkCategory.value = link?.category || getCategoryNames()[0] || "Links";
   elements.linkNote.value = link?.note || "";
+  setLinkStatusWidgetForm(link?.statusWidget);
   setLinkStatus("idle", "Nicht getestet");
   elements.deleteButton.hidden = !link;
   elements.editorDialog.showModal();
   elements.linkTitle.focus();
+}
+
+function setLinkStatusWidgetForm(widget = {}) {
+  elements.linkStatusEnabled.checked = widget?.enabled === true;
+  elements.linkStatusType.value = widget?.type || "basic";
+  elements.linkStatusUrl.value = widget?.url || "";
+  elements.linkStatusTokenId.value = widget?.tokenId || "";
+  elements.linkStatusTokenSecret.value = widget?.tokenSecret || "";
+  elements.linkStatusApiKey.value = widget?.apiKey || "";
+  elements.linkStatusUsername.value = widget?.username || "";
+  elements.linkStatusPassword.value = widget?.password || "";
+  elements.linkStatusPath.value = widget?.statusPath || "";
+  renderLinkStatusFields();
+}
+
+function renderLinkStatusFields() {
+  const enabled = elements.linkStatusEnabled.checked;
+  const type = elements.linkStatusType.value || "basic";
+  elements.linkStatusFields.hidden = !enabled;
+  elements.linkStatusFields.querySelectorAll("[data-status-field]").forEach((field) => {
+    field.hidden = field.dataset.statusField !== type;
+  });
 }
 
 function openSettingsDialog() {
@@ -622,13 +656,25 @@ async function saveLink() {
     title: elements.linkTitle.value.trim(),
     url: normalizeUrl(elements.linkUrl.value),
     category: elements.linkCategory.value.trim() || "Links",
-    note: elements.linkNote.value.trim()
+    note: elements.linkNote.value.trim(),
+    statusWidget: {
+      enabled: elements.linkStatusEnabled.checked,
+      type: elements.linkStatusType.value,
+      url: normalizeUrl(elements.linkStatusUrl.value || elements.linkUrl.value),
+      tokenId: elements.linkStatusTokenId.value.trim(),
+      tokenSecret: elements.linkStatusTokenSecret.value.trim(),
+      apiKey: elements.linkStatusApiKey.value.trim(),
+      username: elements.linkStatusUsername.value.trim(),
+      password: elements.linkStatusPassword.value,
+      statusPath: elements.linkStatusPath.value.trim()
+    }
   };
   const existingIndex = state.links.findIndex((candidate) => candidate.id === link.id);
   if (existingIndex >= 0) state.links.splice(existingIndex, 1, link);
   else state.links.push(link);
   await saveData("Link gespeichert");
   elements.editorDialog.close();
+  loadStatus().catch(() => {});
 }
 
 async function deleteLink() {
@@ -810,6 +856,8 @@ elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error)
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
 elements.deleteButton.addEventListener("click", () => deleteLink().catch((error) => showToast(error.message)));
 elements.testLinkButton.addEventListener("click", () => testLink().catch((error) => setLinkStatus("bad", error.message)));
+elements.linkStatusEnabled.addEventListener("change", renderLinkStatusFields);
+elements.linkStatusType.addEventListener("change", renderLinkStatusFields);
 elements.saveSettingsButton.addEventListener("click", () => saveSettings().catch((error) => showToast(error.message)));
 elements.addCategoryButton.addEventListener("click", addCategory);
 elements.saveCategoriesButton.addEventListener("click", () => saveCategories().catch((error) => showToast(error.message)));

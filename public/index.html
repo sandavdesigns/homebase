@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=settings2" />
+    <link rel="stylesheet" href="/styles.css?v=linkwidgets1" />
   </head>
   <body>
     <main class="shell">
@@ -136,6 +136,51 @@
           Notiz
           <input id="linkNote" maxlength="120" />
         </label>
+        <div class="link-widget-config">
+          <label class="toggle-row">
+            <input id="linkStatusEnabled" type="checkbox" />
+            <span>Status-Widget an diesem Link</span>
+          </label>
+          <div id="linkStatusFields" class="status-config-fields" hidden>
+            <label>
+              Widget
+              <select id="linkStatusType">
+                <option value="basic">Service</option>
+                <option value="proxmox">Proxmox</option>
+                <option value="unraid">Unraid</option>
+                <option value="amp">AMP</option>
+              </select>
+            </label>
+            <label>
+              Status-URL
+              <input id="linkStatusUrl" placeholder="leer = Link-URL" />
+            </label>
+            <label data-status-field="proxmox">
+              Proxmox Token-ID
+              <input id="linkStatusTokenId" autocomplete="off" placeholder="root@pam!homebase" />
+            </label>
+            <label data-status-field="proxmox">
+              Proxmox Token-Secret
+              <input id="linkStatusTokenSecret" autocomplete="off" />
+            </label>
+            <label data-status-field="unraid">
+              Unraid API-Key
+              <input id="linkStatusApiKey" autocomplete="off" />
+            </label>
+            <label data-status-field="amp">
+              AMP Benutzer
+              <input id="linkStatusUsername" autocomplete="off" />
+            </label>
+            <label data-status-field="amp">
+              AMP Passwort
+              <input id="linkStatusPassword" type="password" autocomplete="new-password" />
+            </label>
+            <label>
+              API-Pfad
+              <input id="linkStatusPath" placeholder="optional" />
+            </label>
+          </div>
+        </div>
         <footer>
           <button id="deleteButton" class="danger" type="button">Löschen</button>
           <span></span>
@@ -269,6 +314,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=settings2"></script>
+    <script src="/app.js?v=linkwidgets1"></script>
   </body>
 </html>
