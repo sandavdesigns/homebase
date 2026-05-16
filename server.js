@@ -203,6 +203,8 @@ function normalizeStatusWidget(widget, fallbackUrl = "") {
     apiKey: String(widget?.apiKey || "").slice(0, 260),
     username: String(widget?.username || "").slice(0, 160),
     password: String(widget?.password || "").slice(0, 260),
+    gameHost: String(widget?.gameHost || "").slice(0, 160),
+    gamePort: String(widget?.gamePort || "").replace(/\D+/g, "").slice(0, 5),
     headerName: String(widget?.headerName || "").slice(0, 80),
     headerValue: String(widget?.headerValue || "").slice(0, 260),
     debug: widget?.debug === true
@@ -714,9 +716,9 @@ async function readAmpInstanceCoreStatus(target, sessionId, instance) {
 }
 
 async function readAmpApplicationStatus(target, instance) {
-  if (!isAmpMinecraftInstance(instance)) return instance;
+  if (!target.gamePort && !isAmpMinecraftInstance(instance)) return instance;
   const endpoint = getAmpMinecraftEndpoint(target, instance);
-  if (!endpoint) return instance;
+  if (!endpoint) return { ...instance, AppOnline: false, AppPlayers: undefined };
   const status = await pingMinecraftJava(endpoint.host, endpoint.port).catch(() => null);
   if (!status) {
     return { ...instance, AppOnline: false, AppPlayers: undefined };
@@ -921,6 +923,13 @@ function isAmpMinecraftInstance(instance) {
 }
 
 function getAmpMinecraftEndpoint(target, instance) {
+  const configuredPort = Number(target.gamePort);
+  if (Number.isFinite(configuredPort) && configuredPort > 0) {
+    return {
+      host: String(target.gameHost || "").trim() || getAmpEndpointHost(target, instance),
+      port: configuredPort
+    };
+  }
   const endpoints = [
     ...(Array.isArray(instance.ApplicationEndpoints) ? instance.ApplicationEndpoints : []),
     ...(Array.isArray(instance.applicationEndpoints) ? instance.applicationEndpoints : []),
