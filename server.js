@@ -863,23 +863,37 @@ function isAmpInstanceLike(value) {
 function isAmpInstanceOnline(instance) {
   if (instance.AppOnline === true) return true;
   if (instance.AppOnline === false) return false;
-  if (isAmpMinecraftInstance(instance)) return false;
+  const appState = readAmpApplicationState(instance);
+  if (appState !== undefined) return appState === 20 || /\b(ready|running|started|online)\b/i.test(String(appState));
   const runningValue = instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running;
-  if (runningValue === true || runningValue === 1 || String(runningValue).toLowerCase() === "true") return true;
   if (runningValue === false || runningValue === 0 || String(runningValue).toLowerCase() === "false") return false;
-  const state = String(
-    instance.Status ??
-    instance.status ??
-    instance.State ??
-    instance.state ??
-    instance.AppState ??
-    instance.app_state ??
-    instance.CurrentState ??
-    instance.current_state ??
-    ""
-  ).toLowerCase();
-  if (/\b(stopped|sleeping|offline|suspended|failed|stopping)\b/.test(state)) return false;
-  return /\b(running|started|online)\b/.test(state);
+  return false;
+}
+
+function readAmpApplicationState(instance) {
+  const candidates = [
+    instance?.AppState,
+    instance?.app_state,
+    instance?.State,
+    instance?.state,
+    typeof instance?.Status === "object" ? undefined : instance?.Status,
+    typeof instance?.status === "object" ? undefined : instance?.status,
+    instance?.CurrentState,
+    instance?.current_state,
+    instance?.Status?.State,
+    instance?.status?.state,
+    instance?.Updates?.Status?.State,
+    instance?.Updates?.Status?.state,
+    instance?.Updates?.status?.State,
+    instance?.Updates?.status?.state
+  ].filter((value) => value !== undefined && value !== null && value !== "");
+  if (!candidates.length) return undefined;
+  const numeric = candidates.map((value) => Number(value)).find((value) => Number.isFinite(value));
+  if (numeric !== undefined) return numeric;
+  const text = String(candidates[0]).toLowerCase();
+  if (/\b(stopped|sleeping|offline|suspended|failed|stopping|maintenance|indeterminate)\b/.test(text)) return 0;
+  if (/\b(ready|running|started|online)\b/.test(text)) return 20;
+  return text;
 }
 
 function readAmpCpuPercent(source) {
