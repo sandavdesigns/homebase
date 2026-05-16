@@ -620,8 +620,8 @@ async function readAmpStatus(target, base) {
   });
   const metrics = [];
   const source = status.result || status;
-  const instances = await readAmpInstances(target, sessionId);
-  const instanceStatuses = await readAmpInstanceStatuses(target, sessionId);
+  const instances = filterAmpServerInstances(await readAmpInstances(target, sessionId));
+  const instanceStatuses = filterAmpServerInstances(await readAmpInstanceStatuses(target, sessionId));
   const instanceStatusDetails = await Promise.all(instances.map((instance) => readAmpInstanceCoreStatus(target, sessionId, instance)));
   const mergedInstances = mergeAmpInstances(instances.length ? instances : instanceStatuses, instanceStatuses, instanceStatusDetails);
   const totalInstances = mergedInstances.length;
@@ -744,6 +744,11 @@ function extractAmpInstances(response) {
   return [];
 }
 
+function filterAmpServerInstances(instances) {
+  const filtered = instances.filter(isAmpServerInstance);
+  return filtered.length ? filtered : instances.filter((instance) => !isAmpDaemonInstance(instance));
+}
+
 function mergeAmpInstances(primaryInstances, ...sources) {
   const map = new Map();
   for (const instance of primaryInstances) {
@@ -761,6 +766,34 @@ function mergeAmpInstances(primaryInstances, ...sources) {
     } else if (!primaryInstances.length && key) map.set(key, { ...(map.get(key) || {}), ...source });
   }
   return [...map.values()];
+}
+
+function isAmpServerInstance(instance) {
+  if (!instance || typeof instance !== "object" || isAmpDaemonInstance(instance)) return false;
+  if (instance.Disabled === true || instance.Suspended === true) return false;
+  const moduleName = getAmpModuleName(instance);
+  if (!moduleName) return true;
+  return !/\b(ads|amp|admin|daemon)\b/i.test(moduleName);
+}
+
+function isAmpDaemonInstance(instance) {
+  if (!instance || typeof instance !== "object") return false;
+  if (instance.Daemon === true || instance.daemon === true) return true;
+  const moduleName = getAmpModuleName(instance);
+  const name = String(instance.InstanceName || instance.FriendlyName || instance.DisplayName || instance.Name || "").toLowerCase();
+  return /\b(ads|amp|admin|daemon)\b/i.test(moduleName) || /\b(ads|amp|admin|daemon)\b/i.test(name);
+}
+
+function getAmpModuleName(instance) {
+  return String(
+    instance?.ModuleDisplayName ??
+    instance?.ModuleName ??
+    instance?.Module ??
+    instance?.moduleDisplayName ??
+    instance?.moduleName ??
+    instance?.module ??
+    ""
+  );
 }
 
 function getAmpInstanceKey(instance) {
@@ -827,33 +860,33 @@ function isAmpInstanceOnline(instance) {
 }
 
 function readAmpCpuPercent(source) {
-  return readAmpMetricValue(source, [
+  return ignoreZeroMetric(readAmpMetricValue(source, [
     "CPUUsage",
     "CPU",
     "CPU Usage",
     "CPU Usage %",
     "Processor Usage"
-  ], ["Percent", "percent", "RawValue", "rawValue", "Value", "value"]);
+  ], ["Percent", "percent", "RawValue", "rawValue", "Value", "value"]));
 }
 
 function readAmpMemoryMb(source) {
-  return readAmpMetricValue(source, [
+  return ignoreZeroMetric(readAmpMetricValue(source, [
     "MemoryUsageMB",
     "Memory",
     "Memory Usage",
     "RAM",
     "RAM Usage"
-  ], ["RawValue", "rawValue", "Value", "value", "MB", "mb"]);
+  ], ["RawValue", "rawValue", "Value", "value", "MB", "mb"]));
 }
 
 function readAmpUsersOnline(source) {
-  return readAmpMetricValue(source, [
+  return ignoreZeroMetric(readAmpMetricValue(source, [
     "UsersOnline",
     "Active Users",
     "Users",
     "Players",
     "Players Online"
-  ], ["RawValue", "rawValue", "Value", "value"]);
+  ], ["RawValue", "rawValue", "Value", "value"]));
 }
 
 function readAmpMetricValue(source, names, fields) {
@@ -910,6 +943,10 @@ function sumNumbers(values) {
 function toFiniteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function ignoreZeroMetric(value) {
+  return value === 0 ? undefined : value;
 }
 
 function getAmpDebugMetrics(source, instances) {
