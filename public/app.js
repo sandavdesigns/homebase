@@ -86,6 +86,7 @@ const elements = {
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
+  settingsAddNoteButton: document.querySelector("#settingsAddNoteButton"),
   settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
   settingsImportButton: document.querySelector("#settingsImportButton"),
   saveSettingsButton: document.querySelector("#saveSettingsButton"),
@@ -241,14 +242,13 @@ function renderProfiles() {
 
 function renderWidgets() {
   const notes = getNotes();
-  elements.widgets.hidden = false;
   renderStatus();
-  elements.notesWidget.hidden = state.preferences?.showNotes === false;
+  const notesHidden = state.preferences?.showNotes === false || (!notes.length && !state.noteComposerOpen);
+  elements.notesWidget.hidden = notesHidden;
+  elements.widgets.hidden = notesHidden && elements.statusWidget.hidden;
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
-  elements.notesList.replaceChildren(
-    ...(notes.length ? notes.map(createNoteCard) : [createEmptyNote()])
-  );
+  elements.notesList.replaceChildren(...notes.map(createNoteCard));
 }
 
 function renderStatus() {
@@ -397,18 +397,13 @@ function createNoteCard(note) {
   remove.textContent = "x";
   remove.ariaLabel = "Notiz löschen";
   remove.addEventListener("click", async () => {
-    state.widgets.notes = getNotes().filter((candidate) => candidate.id !== note.id);
+    const nextNotes = getNotes().filter((candidate) => candidate.id !== note.id);
+    state.widgets.notes = nextNotes;
+    if (!nextNotes.length) state.noteComposerOpen = false;
     await saveData("Notiz gelöscht");
   });
   card.append(text, remove);
   return card;
-}
-
-function createEmptyNote() {
-  const empty = document.createElement("p");
-  empty.className = "empty-note";
-  empty.textContent = "Noch keine Notizen";
-  return empty;
 }
 
 function renderCategoryList() {
@@ -658,6 +653,18 @@ function openSettingsDialog() {
   elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
   elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
   elements.settingsDialog.showModal();
+}
+
+function openNoteComposer() {
+  if (!canEdit()) return openAdminDialog();
+  state.preferences = {
+    ...(state.preferences || {}),
+    showNotes: true
+  };
+  state.noteComposerOpen = true;
+  elements.settingsDialog.close();
+  renderWidgets();
+  window.requestAnimationFrame(() => elements.noteInput.focus());
 }
 
 function openCategoriesDialog() {
@@ -922,6 +929,7 @@ elements.searchToggleButton.addEventListener("click", () => {
 });
 elements.addButton.addEventListener("click", () => openLinkDialog());
 elements.settingsButton.addEventListener("click", openSettingsDialog);
+elements.settingsAddNoteButton.addEventListener("click", openNoteComposer);
 elements.settingsCategoriesButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openCategoriesDialog();
@@ -959,6 +967,7 @@ elements.addNoteButton.addEventListener("click", async () => {
   if (!text) return;
   state.widgets.notes = [...getNotes(), { id: createId(), text }];
   delete state.widgets.quickNote;
+  state.noteComposerOpen = false;
   elements.noteInput.value = "";
   await saveData("Notiz gespeichert");
 });
