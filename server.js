@@ -203,7 +203,8 @@ function normalizeStatusWidget(widget, fallbackUrl = "") {
     username: String(widget?.username || "").slice(0, 160),
     password: String(widget?.password || "").slice(0, 260),
     headerName: String(widget?.headerName || "").slice(0, 80),
-    headerValue: String(widget?.headerValue || "").slice(0, 260)
+    headerValue: String(widget?.headerValue || "").slice(0, 260),
+    debug: widget?.debug === true
   };
 }
 
@@ -625,7 +626,7 @@ async function readAmpStatus(target, base) {
   const mergedInstances = mergeAmpInstanceSources(instances, instanceStatuses, instanceStatusDetails);
   const totalInstances = mergedInstances.length;
   if (totalInstances) {
-    const online = mergedInstances.filter(isAmpInstanceOnline).length;
+    const online = Math.min(mergedInstances.filter(isAmpInstanceOnline).length, totalInstances);
     metrics.push({ label: "Server", value: `${online}/${totalInstances}` });
   }
   const cpu = totalInstances
@@ -640,6 +641,7 @@ async function readAmpStatus(target, base) {
   if (cpu !== undefined) metrics.push({ label: "CPU", value: formatAmpMetric(cpu, "%") });
   if (memory !== undefined) metrics.push({ label: "RAM", value: formatAmpMetric(memory, "MB") });
   if (users !== undefined) metrics.push({ label: "User", value: String(users).slice(0, 24) });
+  if (target.debug === true) metrics.push(...getAmpDebugMetrics(source, mergedInstances));
 
   return {
     ...base,
@@ -736,11 +738,30 @@ function extractAmpInstances(response) {
 function mergeAmpInstanceSources(...sources) {
   const map = new Map();
   for (const source of sources.flat()) {
-    if (!source || typeof source !== "object") continue;
-    const id = getAmpInstanceId(source) || crypto.randomUUID();
-    map.set(id, { ...(map.get(id) || {}), ...source, InstanceID: id });
+    if (!source || typeof source !== "object" || !Object.keys(source).length) continue;
+    const id = getAmpInstanceKey(source);
+    if (id) {
+      map.set(id, { ...(map.get(id) || {}), ...source, InstanceID: getAmpInstanceId(source) || id });
+      continue;
+    }
+    if (map.size === 1) {
+      const [existingId] = map.keys();
+      map.set(existingId, { ...map.get(existingId), ...source });
+    }
   }
   return [...map.values()];
+}
+
+function getAmpInstanceKey(instance) {
+  return String(
+    getAmpInstanceId(instance) ||
+    instance?.InstanceName ||
+    instance?.FriendlyName ||
+    instance?.DisplayName ||
+    instance?.Name ||
+    instance?.name ||
+    ""
+  ).toLowerCase();
 }
 
 function getAmpInstanceId(instance) {
@@ -857,6 +878,20 @@ function sumNumbers(values) {
 function toFiniteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function getAmpDebugMetrics(source, instances) {
+  const metrics = [];
+  const sourceMetricNames = Object.keys(source?.Metrics || source?.metrics || {}).slice(0, 4);
+  if (sourceMetricNames.length) metrics.push({ label: "Debug", value: sourceMetricNames.join(", ").slice(0, 36) });
+  const firstInstance = instances.find((instance) => instance && typeof instance === "object") || {};
+  const instanceMetricNames = Object.keys(firstInstance.Metrics || firstInstance.metrics || {}).slice(0, 4);
+  if (instanceMetricNames.length) metrics.push({ label: "Instanz", value: instanceMetricNames.join(", ").slice(0, 36) });
+  const stateKeys = Object.keys(firstInstance)
+    .filter((key) => /state|running|status|cpu|memory|ram|user|player/i.test(key))
+    .slice(0, 5);
+  if (stateKeys.length) metrics.push({ label: "Felder", value: stateKeys.join(", ").slice(0, 36) });
+  return metrics.slice(0, 3);
 }
 
 function getAmpStatusMessage(source) {

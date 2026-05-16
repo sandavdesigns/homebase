@@ -74,6 +74,7 @@ const elements = {
   linkStatusUsername: document.querySelector("#linkStatusUsername"),
   linkStatusPassword: document.querySelector("#linkStatusPassword"),
   linkStatusPath: document.querySelector("#linkStatusPath"),
+  linkStatusDebug: document.querySelector("#linkStatusDebug"),
   deleteButton: document.querySelector("#deleteButton"),
   saveLinkButton: document.querySelector("#saveLinkButton"),
   testLinkButton: document.querySelector("#testLinkButton"),
@@ -508,7 +509,7 @@ function createLinkStatus(status) {
 
   const metrics = document.createElement("div");
   metrics.className = "link-status-metrics";
-  const metricItems = Array.isArray(status.metrics) ? status.metrics.slice(0, 3) : [];
+  const metricItems = Array.isArray(status.metrics) ? status.metrics.slice(0, 5) : [];
   metrics.replaceChildren(...metricItems.map((metric) => {
     const item = document.createElement("span");
     item.textContent = `${metric.label} ${metric.value}`;
@@ -558,6 +559,7 @@ function setLinkStatusWidgetForm(widget = {}) {
   elements.linkStatusUsername.value = widget?.username || "";
   elements.linkStatusPassword.value = widget?.password || "";
   elements.linkStatusPath.value = widget?.statusPath || "";
+  elements.linkStatusDebug.checked = widget?.debug === true;
   renderLinkStatusFields();
 }
 
@@ -666,7 +668,8 @@ async function saveLink() {
       apiKey: elements.linkStatusApiKey.value.trim(),
       username: elements.linkStatusUsername.value.trim(),
       password: elements.linkStatusPassword.value,
-      statusPath: elements.linkStatusPath.value.trim()
+      statusPath: elements.linkStatusPath.value.trim(),
+      debug: elements.linkStatusDebug.checked
     }
   };
   const existingIndex = state.links.findIndex((candidate) => candidate.id === link.id);
