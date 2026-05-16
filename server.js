@@ -861,12 +861,15 @@ function getAmpInstanceDetails(instances) {
     const online = isAmpInstanceOnline(instance);
     const memory = readAmpMemoryMb(instance);
     const users = readAmpUsersOnline(instance);
-    const detailParts = [online ? "läuft" : "aus"];
+    const detailParts = [];
     if (memory !== undefined) detailParts.push(formatAmpMetric(memory, "MB"));
-    if (users !== undefined) detailParts.push(`${users} User`);
+    if (users !== undefined) detailParts.push(String(users));
     return {
       label: getAmpInstanceName(instance, `Instanz ${index + 1}`).slice(0, 40),
-      value: detailParts.join(" · ")
+      value: detailParts.join(" · "),
+      online,
+      memory: memory !== undefined ? formatAmpMetric(memory, "MB") : "",
+      users: users !== undefined ? String(users) : ""
     };
   });
 }

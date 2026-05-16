@@ -316,10 +316,38 @@ function createStatusDetails(details) {
   list.className = "status-details";
   list.replaceChildren(...detailItems.map((detail) => {
     const row = document.createElement("p");
+    if (typeof detail.online === "boolean") row.classList.add(detail.online ? "is-online" : "is-offline");
     const label = document.createElement("span");
-    label.textContent = detail.label || "Status";
+    label.className = "status-detail-name";
+    if (typeof detail.online === "boolean") {
+      const dot = document.createElement("i");
+      dot.className = "status-detail-dot";
+      dot.ariaHidden = "true";
+      label.append(dot);
+    }
+    const name = document.createElement("span");
+    name.textContent = detail.label || "Status";
+    label.append(name);
     const value = document.createElement("strong");
-    value.textContent = detail.value || "";
+    value.className = "status-detail-value";
+    if (detail.memory) {
+      const memory = document.createElement("span");
+      memory.textContent = detail.memory;
+      value.append(memory);
+    }
+    if (detail.users !== undefined && detail.users !== "") {
+      const users = document.createElement("span");
+      users.className = "status-detail-users";
+      users.ariaLabel = `${detail.users} User`;
+      const icon = document.createElement("i");
+      icon.className = "user-icon";
+      icon.ariaHidden = "true";
+      const count = document.createElement("span");
+      count.textContent = detail.users;
+      users.append(icon, count);
+      value.append(users);
+    }
+    if (!value.childElementCount) value.textContent = detail.value || "";
     row.append(label, value);
     return row;
   }));
@@ -531,7 +559,18 @@ function createLinkStatus(status) {
   const metricItems = Array.isArray(status.metrics) ? status.metrics.slice(0, 5) : [];
   metrics.replaceChildren(...metricItems.map((metric) => {
     const item = document.createElement("span");
-    item.textContent = `${metric.label} ${metric.value}`;
+    if (String(metric.label).toLowerCase() === "user") {
+      item.className = "link-status-user-metric";
+      const icon = document.createElement("i");
+      icon.className = "user-icon";
+      icon.ariaHidden = "true";
+      const value = document.createElement("span");
+      value.textContent = metric.value;
+      item.ariaLabel = `${metric.value} User`;
+      item.append(icon, value);
+    } else {
+      item.textContent = `${metric.label} ${metric.value}`;
+    }
     return item;
   }));
 
