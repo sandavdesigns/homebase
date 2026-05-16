@@ -623,7 +623,7 @@ async function readAmpStatus(target, base) {
   const instances = await readAmpInstances(target, sessionId);
   const instanceStatuses = await readAmpInstanceStatuses(target, sessionId);
   const instanceStatusDetails = await Promise.all(instances.map((instance) => readAmpInstanceCoreStatus(target, sessionId, instance)));
-  const mergedInstances = mergeAmpInstanceSources(instances, instanceStatuses, instanceStatusDetails);
+  const mergedInstances = mergeAmpInstances(instances.length ? instances : instanceStatuses, instanceStatuses, instanceStatusDetails);
   const totalInstances = mergedInstances.length;
   if (totalInstances) {
     const online = Math.min(mergedInstances.filter(isAmpInstanceOnline).length, totalInstances);
@@ -689,12 +689,21 @@ async function readAmpInstanceCoreStatus(target, sessionId, instance) {
     });
     const instanceSessionId = login.sessionID || login.SESSIONID || login.sessionId || login.result?.sessionID;
     if (!instanceSessionId) return {};
-    const status = await requestJsonPost(new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/Core/GetStatus`, target.url).href, {
+    const instanceBase = new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/`, target.url).href;
+    const status = await requestJsonPost(new URL("Core/GetStatus", instanceBase).href, {
       body: { SESSIONID: instanceSessionId }
     });
+    const updates = await requestJsonPost(new URL("Core/GetUpdates", instanceBase).href, {
+      body: { SESSIONID: instanceSessionId }
+    }).catch(() => ({}));
+    const statusSource = status.result || status;
+    const updateSource = updates.result || updates;
+    const liveStatus = updateSource.Status || updateSource.status || {};
     return {
+      ...(liveStatus || {}),
       ...status,
-      ...(status.result || {}),
+      ...statusSource,
+      Updates: updateSource,
       InstanceID: instanceId
     };
   } catch {
@@ -735,19 +744,21 @@ function extractAmpInstances(response) {
   return [];
 }
 
-function mergeAmpInstanceSources(...sources) {
+function mergeAmpInstances(primaryInstances, ...sources) {
   const map = new Map();
+  for (const instance of primaryInstances) {
+    if (!instance || typeof instance !== "object") continue;
+    const key = getAmpInstanceKey(instance) || crypto.randomUUID();
+    map.set(key, { ...instance });
+  }
   for (const source of sources.flat()) {
     if (!source || typeof source !== "object" || !Object.keys(source).length) continue;
-    const id = getAmpInstanceKey(source);
-    if (id) {
-      map.set(id, { ...(map.get(id) || {}), ...source, InstanceID: getAmpInstanceId(source) || id });
-      continue;
-    }
-    if (map.size === 1) {
-      const [existingId] = map.keys();
-      map.set(existingId, { ...map.get(existingId), ...source });
-    }
+    const key = getAmpInstanceKey(source);
+    if (key && map.has(key)) map.set(key, { ...map.get(key), ...source });
+    else if (!key && map.size === 1) {
+      const [existingKey] = map.keys();
+      map.set(existingKey, { ...map.get(existingKey), ...source });
+    } else if (!primaryInstances.length && key) map.set(key, { ...(map.get(key) || {}), ...source });
   }
   return [...map.values()];
 }
@@ -847,20 +858,41 @@ function readAmpUsersOnline(source) {
 
 function readAmpMetricValue(source, names, fields) {
   if (!source || typeof source !== "object") return undefined;
-  for (const name of names) {
-    const direct = toFiniteNumber(source[name]);
-    if (direct !== undefined) return direct;
-  }
-  const metrics = source.Metrics || source.metrics || {};
-  for (const name of names) {
-    const metric = metrics[name] || metrics[name.toLowerCase()];
-    if (!metric || typeof metric !== "object") continue;
-    for (const field of fields) {
-      const value = toFiniteNumber(metric[field]);
-      if (value !== undefined) return value;
+  const sources = [
+    source,
+    source.Status,
+    source.status,
+    source.Updates?.Status,
+    source.Updates?.status
+  ].filter((candidate) => candidate && typeof candidate === "object");
+  for (const candidate of sources) {
+    for (const name of names) {
+      const direct = toFiniteNumber(candidate[name]);
+      if (direct !== undefined) return direct;
+    }
+    const metrics = candidate.Metrics || candidate.metrics || {};
+    const metricEntries = Object.entries(metrics);
+    for (const name of names) {
+      const metric = findAmpMetric(metrics, metricEntries, name);
+      if (!metric || typeof metric !== "object") continue;
+      for (const field of fields) {
+        const value = toFiniteNumber(metric[field]);
+        if (value !== undefined) return value;
+      }
     }
   }
   return undefined;
+}
+
+function findAmpMetric(metrics, entries, name) {
+  return metrics[name] ||
+    metrics[name.toLowerCase()] ||
+    entries.find(([key]) => normalizeAmpMetricName(key) === normalizeAmpMetricName(name))?.[1] ||
+    entries.find(([key]) => normalizeAmpMetricName(key).includes(normalizeAmpMetricName(name)))?.[1];
+}
+
+function normalizeAmpMetricName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function averageNumbers(values) {
