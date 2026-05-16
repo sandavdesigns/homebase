@@ -619,17 +619,34 @@ async function readAmpStatus(target, base) {
   });
   const metrics = [];
   const source = status.result || status;
-  for (const [label, key] of [["CPU", "CPUUsage"], ["RAM", "MemoryUsageMB"], ["Spieler", "UsersOnline"]]) {
-    if (source[key] !== undefined) metrics.push({ label, value: String(source[key]).slice(0, 24) });
-  }
+  const ampMetrics = source.Metrics || {};
+  const cpu = source.CPUUsage ?? ampMetrics["CPU Usage"]?.Percent ?? ampMetrics.CPU?.Percent;
+  const memory = source.MemoryUsageMB ?? ampMetrics["Memory Usage"]?.RawValue ?? ampMetrics.Memory?.RawValue;
+  const users = source.UsersOnline ?? ampMetrics["Active Users"]?.RawValue ?? ampMetrics.Users?.RawValue;
+  if (cpu !== undefined) metrics.push({ label: "CPU", value: formatAmpMetric(cpu, "%") });
+  if (memory !== undefined) metrics.push({ label: "RAM", value: formatAmpMetric(memory, "MB") });
+  if (users !== undefined) metrics.push({ label: "User", value: String(users).slice(0, 24) });
 
   return {
     ...base,
     ok: true,
     status: "online",
-    message: source.State || source.Status || "AMP API erreichbar",
+    message: getAmpStatusMessage(source),
     metrics
   };
+}
+
+function getAmpStatusMessage(source) {
+  const status = source.Status || source.StateName || source.StateDescription || "";
+  if (status && !/^\d+$/.test(String(status))) return String(status).slice(0, 40);
+  return "AMP erreichbar";
+}
+
+function formatAmpMetric(value, fallbackUnit = "") {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return String(value).slice(0, 24);
+  const rounded = Math.round(number * 10) / 10;
+  return `${rounded}${fallbackUnit}`;
 }
 
 async function readGenericServiceStatus(target, base) {
