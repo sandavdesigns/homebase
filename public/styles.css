@@ -949,6 +949,81 @@ body[data-theme="time-circuit"] .link-title {
   white-space: nowrap;
 }
 
+.link-status-metrics .link-status-metric {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.metric-icon {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  color: currentColor;
+}
+
+.metric-icon-server::before,
+.metric-icon-server::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  width: 9px;
+  height: 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.metric-icon-server::before {
+  top: 1px;
+}
+
+.metric-icon-server::after {
+  bottom: 1px;
+}
+
+.metric-icon-cpu {
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.metric-icon-cpu::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+}
+
+.metric-icon-ram {
+  height: 9px;
+  margin-top: 1px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.metric-icon-ram::before,
+.metric-icon-ram::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 0 0 1px 1px;
+}
+
+.metric-icon-ram::before {
+  left: 2px;
+}
+
+.metric-icon-ram::after {
+  right: 2px;
+}
+
 .link-status-debug {
   grid-column: 1 / -1;
   max-width: 100%;

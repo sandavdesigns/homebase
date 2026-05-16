@@ -556,17 +556,20 @@ function createLinkStatus(status) {
 
   const metrics = document.createElement("div");
   metrics.className = "link-status-metrics";
-  const metricItems = Array.isArray(status.metrics) ? status.metrics.slice(0, 5) : [];
+  const metricItems = (Array.isArray(status.metrics) ? status.metrics : [])
+    .filter((metric) => String(metric.label).toLowerCase() !== "user")
+    .slice(0, 5);
   metrics.replaceChildren(...metricItems.map((metric) => {
     const item = document.createElement("span");
-    if (String(metric.label).toLowerCase() === "user") {
-      item.className = "link-status-user-metric";
+    const metricKind = getStatusMetricKind(metric.label);
+    if (metricKind) {
+      item.className = `link-status-metric is-${metricKind}`;
+      item.ariaLabel = `${metric.label} ${metric.value}`;
       const icon = document.createElement("i");
-      icon.className = "user-icon";
+      icon.className = `metric-icon metric-icon-${metricKind}`;
       icon.ariaHidden = "true";
       const value = document.createElement("span");
       value.textContent = metric.value;
-      item.ariaLabel = `${metric.value} User`;
       item.append(icon, value);
     } else {
       item.textContent = `${metric.label} ${metric.value}`;
@@ -585,6 +588,14 @@ function createLinkStatus(status) {
     panel.append(debug);
   }
   return panel;
+}
+
+function getStatusMetricKind(label) {
+  const normalized = String(label || "").toLowerCase();
+  if (normalized === "server") return "server";
+  if (normalized === "cpu") return "cpu";
+  if (normalized === "ram" || normalized === "speicher") return "ram";
+  return "";
 }
 
 function getUrlOrigin(value) {
