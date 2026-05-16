@@ -967,14 +967,44 @@ function readAmpMemoryMb(source) {
 }
 
 function readAmpUsersOnline(source) {
-  if (source?.AppPlayers !== undefined) return source.AppPlayers;
-  return ignoreZeroMetric(readAmpMetricValue(source, [
+  const direct = readAmpDirectNumber(source, [
+    "AppPlayers",
+    "appPlayers",
+    "Players",
+    "players",
+    "PlayerCount",
+    "playerCount",
+    "PlayersOnline",
+    "playersOnline",
+    "OnlinePlayers",
+    "onlinePlayers",
+    "CurrentPlayers",
+    "currentPlayers",
+    "UsersOnline",
+    "usersOnline",
+    "ActiveUsers",
+    "activeUsers",
+    "UserCount",
+    "userCount",
+    "ClientCount",
+    "clientCount"
+  ]);
+  if (direct !== undefined) return direct;
+  return readAmpMetricValue(source, [
     "UsersOnline",
     "Active Users",
+    "Connected Users",
+    "User Count",
     "Users",
     "Players",
-    "Players Online"
-  ], ["RawValue", "rawValue", "Value", "value"]));
+    "Players Online",
+    "Online Players",
+    "Current Players",
+    "Player Count",
+    "Connected Players",
+    "Clients",
+    "Clients Connected"
+  ], ["RawValue", "rawValue", "Value", "value", "Count", "count"]);
 }
 
 function readAmpMetricValue(source, names, fields) {
@@ -1000,6 +1030,24 @@ function readAmpMetricValue(source, names, fields) {
         const value = toFiniteNumber(metric[field]);
         if (value !== undefined) return value;
       }
+    }
+  }
+  return undefined;
+}
+
+function readAmpDirectNumber(source, names) {
+  if (!source || typeof source !== "object") return undefined;
+  const sources = [
+    source,
+    source.Status,
+    source.status,
+    source.Updates?.Status,
+    source.Updates?.status
+  ].filter((candidate) => candidate && typeof candidate === "object");
+  for (const candidate of sources) {
+    for (const name of names) {
+      const direct = toFiniteNumber(candidate[name]);
+      if (direct !== undefined) return direct;
     }
   }
   return undefined;
@@ -1048,6 +1096,7 @@ function getAmpDebugLines(source, instances) {
       `state=${shortDebugValue(instance.State ?? instance.state)}`,
       `live=${shortDebugValue(instance.Updates?.Status?.State ?? instance.Updates?.status?.state ?? instance.Status?.State ?? instance.status?.state)}`,
       `ports=${shortDebugValue(formatAmpDebugPorts(instance))}`,
+      `users=${shortDebugValue(readAmpUsersOnline(instance))}`,
       `running=${shortDebugValue(instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running)}`,
       `src=${shortDebugValue(instance.DebugSource || "list")}`
     ].join(" ");
