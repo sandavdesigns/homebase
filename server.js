@@ -35,6 +35,12 @@ const defaultData = {
     clock: true,
     notes: []
   },
+  preferences: {
+    showCategoryCounts: false,
+    showLinkStatus: true,
+    showNotes: true,
+    openLinksInNewTab: true
+  },
   admin: {
     enabled: Boolean(ADMIN_PASSWORD)
   },
@@ -118,6 +124,7 @@ function normalizeData(data) {
     theme: normalizeTheme(data.theme),
     activeProfileId,
     widgets: normalizeWidgets(data.widgets),
+    preferences: normalizePreferences(data.preferences),
     admin: {
       enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash),
       passwordHash: String(data.admin?.passwordHash || "")
@@ -168,6 +175,15 @@ function normalizeWidgets(widgets) {
         text: String(note.text || "").trim().slice(0, 500)
       }))
       .filter((note) => note.text)
+  };
+}
+
+function normalizePreferences(preferences) {
+  return {
+    showCategoryCounts: preferences?.showCategoryCounts === true,
+    showLinkStatus: preferences?.showLinkStatus !== false,
+    showNotes: preferences?.showNotes !== false,
+    openLinksInNewTab: preferences?.openLinksInNewTab !== false
   };
 }
 

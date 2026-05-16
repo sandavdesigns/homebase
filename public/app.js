@@ -8,6 +8,7 @@ const state = {
   categories: [],
   links: [],
   widgets: { clock: true, notes: [] },
+  preferences: { showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
   statusLoading: false,
@@ -40,6 +41,7 @@ const elements = {
   statusList: document.querySelector("#statusList"),
   statusUpdated: document.querySelector("#statusUpdated"),
   refreshStatusButton: document.querySelector("#refreshStatusButton"),
+  notesWidget: document.querySelector("#notesWidget"),
   notesList: document.querySelector("#notesList"),
   noteInput: document.querySelector("#noteInput"),
   addNoteButton: document.querySelector("#addNoteButton"),
@@ -64,7 +66,6 @@ const elements = {
   linkUrl: document.querySelector("#linkUrl"),
   linkCategory: document.querySelector("#linkCategory"),
   linkNote: document.querySelector("#linkNote"),
-  categoryList: document.querySelector("#categoryList"),
   deleteButton: document.querySelector("#deleteButton"),
   saveLinkButton: document.querySelector("#saveLinkButton"),
   testLinkButton: document.querySelector("#testLinkButton"),
@@ -72,6 +73,10 @@ const elements = {
   settingsForm: document.querySelector("#settingsForm"),
   settingsTitle: document.querySelector("#settingsTitle"),
   settingsSubtitle: document.querySelector("#settingsSubtitle"),
+  settingShowCategoryCounts: document.querySelector("#settingShowCategoryCounts"),
+  settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
+  settingShowNotes: document.querySelector("#settingShowNotes"),
+  settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
   saveSettingsButton: document.querySelector("#saveSettingsButton"),
   categoryEditor: document.querySelector("#categoryEditor"),
   addCategoryButton: document.querySelector("#addCategoryButton"),
@@ -143,6 +148,7 @@ async function saveData(message = "Gespeichert") {
       theme: state.theme,
       activeProfileId: state.activeProfileId,
       widgets: state.widgets,
+      preferences: state.preferences,
       profiles: state.profiles
     })
   });
@@ -226,6 +232,7 @@ function renderWidgets() {
   const notes = getNotes();
   elements.widgets.hidden = false;
   renderStatus();
+  elements.notesWidget.hidden = state.preferences?.showNotes === false;
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
   elements.notesList.replaceChildren(
@@ -347,10 +354,11 @@ function createEmptyNote() {
 }
 
 function renderCategoryList() {
-  elements.categoryList.replaceChildren(
+  elements.linkCategory.replaceChildren(
     ...getCategoryNames().map((category) => {
       const option = document.createElement("option");
       option.value = category;
+      option.textContent = category;
       return option;
     })
   );
@@ -378,7 +386,7 @@ function renderGroups() {
       const section = document.createElement("article");
       section.className = "group";
       const heading = document.createElement("h2");
-      heading.textContent = `${category} (${groupLinks.length})`;
+      heading.textContent = state.preferences?.showCategoryCounts ? `${category} (${groupLinks.length})` : category;
       const list = document.createElement("div");
       list.className = "link-list";
       if (groupLinks.length) {
@@ -422,12 +430,14 @@ function getCategoryNames() {
 function createLinkCard(link) {
   const wrapper = document.createElement("div");
   wrapper.className = "link-card";
-  const status = getStatusForLink(link);
+  const status = state.preferences?.showLinkStatus === false ? null : getStatusForLink(link);
   if (status) wrapper.classList.add(`has-status`, `is-${status.status || "offline"}`);
   const anchor = document.createElement("a");
   anchor.href = link.url;
-  anchor.target = "_blank";
-  anchor.rel = "noopener noreferrer";
+  if (state.preferences?.openLinksInNewTab !== false) {
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+  }
 
   const title = document.createElement("p");
   title.className = "link-title";
@@ -517,6 +527,7 @@ function openLinkDialog(link = null) {
   elements.linkId.value = link?.id || "";
   elements.linkTitle.value = link?.title || "";
   elements.linkUrl.value = link?.url || "";
+  renderCategoryList();
   elements.linkCategory.value = link?.category || getCategoryNames()[0] || "Links";
   elements.linkNote.value = link?.note || "";
   setLinkStatus("idle", "Nicht getestet");
@@ -529,6 +540,10 @@ function openSettingsDialog() {
   if (!canEdit()) return openAdminDialog();
   elements.settingsTitle.value = state.title;
   elements.settingsSubtitle.value = state.subtitle;
+  elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
+  elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
+  elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
+  elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
   elements.settingsDialog.showModal();
 }
 
@@ -640,7 +655,14 @@ async function saveSettings() {
   if (!elements.settingsForm.reportValidity()) return;
   state.title = elements.settingsTitle.value.trim();
   state.subtitle = elements.settingsSubtitle.value.trim();
-  await saveData("Titel gespeichert");
+  state.preferences = {
+    ...(state.preferences || {}),
+    showCategoryCounts: elements.settingShowCategoryCounts.checked,
+    showLinkStatus: elements.settingShowLinkStatus.checked,
+    showNotes: elements.settingShowNotes.checked,
+    openLinksInNewTab: elements.settingOpenLinksInNewTab.checked
+  };
+  await saveData("Einstellungen gespeichert");
   elements.settingsDialog.close();
 }
 

@@ -213,9 +213,18 @@ Diese Version enthaelt diese Widgets:
 - Mehrere Notizen
 - Link-Statusanzeigen, wenn `HOMEBASE_STATUS_TARGETS` zu vorhandenen Link-URLs oder Linktiteln passt
 
+## Einstellungen
+
+Im Browser-Menue `Einstellungen` kannst du Titel und Untertitel pflegen und Anzeigeoptionen umschalten:
+
+- Kategorie-Zahlen anzeigen
+- Status an Linkkarten anzeigen
+- Notizenbereich anzeigen
+- Links in neuem Tab oeffnen
+
 ## Status Integrationen
 
-Statusanzeigen werden ueber die Environment-Variable `HOMEBASE_STATUS_TARGETS` konfiguriert und an passende Linkkarten geheftet. Homebase matcht zuerst ueber denselben URL-Ursprung, zum Beispiel `https://192.168.1.15:8006`, und danach ueber aehnliche Namen. Das ist bewusst kein Browser-Dialog, damit API-Token nicht im JSON-Export oder in der sichtbaren App-Konfiguration landen.
+Statusanzeigen werden ueber die Environment-Variable `HOMEBASE_STATUS_TARGETS` konfiguriert und an passende Linkkarten geheftet. Homebase matcht zuerst ueber denselben URL-Ursprung, zum Beispiel `https://192.168.1.15:8006`, und danach ueber exakt gleiche Namen ohne Leer- und Sonderzeichen. Das ist bewusst kein Browser-Dialog, damit API-Token nicht im JSON-Export oder in der sichtbaren App-Konfiguration landen.
 
 Minimal ohne API-Zugangsdaten:
 
@@ -280,7 +289,7 @@ Nach dem Update:
 - `Kategorien` verwaltet Gruppen und Umbenennungen zentral.
 - `+ Profil` erstellt ein weiteres Profil.
 - `Import` ersetzt die aktuelle Konfiguration durch JSON.
-- `Titel` aendert Titel und Untertitel.
+- `Einstellungen` aendert Titel, Untertitel und Anzeigeoptionen.
 - `Export` laedt die aktuelle JSON-Konfiguration herunter.
 
 Kategorien und Links werden alphabetisch angezeigt. Linkkarten zeigen Titel, Favicon und optionale Notiz; die URL bleibt als Klickziel hinterlegt, wird aber nicht extra angezeigt.
