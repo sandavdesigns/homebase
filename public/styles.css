@@ -252,18 +252,14 @@ button:disabled,
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.kicker {
-  margin: 0 0 5px;
-  color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
+.brand-block {
+  min-width: 0;
 }
 
 h1 {
@@ -285,12 +281,12 @@ h1 {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 2px;
-  min-width: 116px;
+  gap: 1px;
+  min-width: 148px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px 14px 9px;
-  text-align: center;
+  padding: 8px 12px 9px;
+  text-align: left;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%),
     radial-gradient(circle at 50% 0, color-mix(in srgb, var(--accent-2), transparent 76%), transparent 58%),
@@ -323,7 +319,7 @@ body[data-theme="time-circuit"] .clock {
     inset 0 0 18px rgba(255, 178, 56, 0.08);
 }
 
-body[data-theme="time-circuit"] .clock-label {
+body[data-theme="time-circuit"] .clock-date {
   color: var(--accent-3);
 }
 
@@ -334,16 +330,18 @@ body[data-theme="time-circuit"] #timeLabel {
     0 0 18px rgba(255, 178, 56, 0.36);
 }
 
-.clock-label {
+.clock-date {
   color: var(--muted);
-  font-size: 0.58rem;
+  font-size: 0.64rem;
   font-weight: 850;
   letter-spacing: 0;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 #timeLabel {
-  font-size: 1.42rem;
+  font-size: 1.72rem;
+  line-height: 1;
   font-weight: 850;
   font-variant-numeric: tabular-nums;
   color: var(--accent-2);
@@ -360,37 +358,6 @@ body[data-theme="time-circuit"] #timeLabel {
   }
 }
 
-.profile-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.profile-bar .compact-field {
-  flex: 0 1 380px;
-  min-width: 220px;
-}
-
-#newProfileButton,
-#deleteProfileButton {
-  min-height: 34px;
-  padding-inline: 10px;
-  font-size: 0.84rem;
-}
-
-#deleteProfileButton {
-  color: color-mix(in srgb, var(--danger), white 18%);
-  background: color-mix(in srgb, var(--danger), transparent 88%);
-  border-color: color-mix(in srgb, var(--danger), transparent 62%);
-  box-shadow: none;
-}
-
-#adminButton {
-  margin-left: auto;
-}
-
 .command-row {
   display: flex;
   flex-wrap: wrap;
@@ -399,15 +366,28 @@ body[data-theme="time-circuit"] #timeLabel {
   margin-bottom: 12px;
 }
 
-#settingsButton {
+#adminButton {
   margin-left: auto;
 }
 
-.profile-bar button,
 .command-row button,
 .command-row .button {
   min-height: 38px;
   padding-inline: 13px;
+}
+
+.command-profile {
+  flex: 0 1 180px;
+  min-width: 140px;
+}
+
+.command-profile select {
+  min-height: 38px;
+  padding-inline: 10px;
+}
+
+#settingsButton {
+  min-width: 124px;
 }
 
 .compact-field,
@@ -419,7 +399,7 @@ body[data-theme="time-circuit"] #timeLabel {
   font-weight: 750;
 }
 
-.profile-bar .compact-field > span {
+.command-profile > span {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1330,10 +1310,6 @@ dialog::backdrop {
 }
 
 @media (max-width: 920px) {
-  .profile-bar {
-    align-items: stretch;
-  }
-
   #adminButton {
     margin-left: 0;
   }
@@ -1349,22 +1325,13 @@ dialog::backdrop {
     padding-top: 14px;
   }
 
-  .profile-bar,
   .widgets,
   .link-test-row {
     grid-template-columns: 1fr;
   }
 
-  .profile-bar {
-    display: grid;
-  }
-
-  .profile-bar .compact-field {
-    min-width: 0;
-  }
-
   .topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 10px;
   }
 
@@ -1376,14 +1343,22 @@ dialog::backdrop {
     margin-left: 0;
   }
 
+  #adminButton {
+    margin-left: 0;
+  }
+
+  .command-profile {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
   .command-row button,
-  .command-row .button,
-  .profile-bar button {
+  .command-row .button {
     width: 100%;
   }
 
   .clock {
-    min-width: 94px;
+    min-width: 106px;
     padding-inline: 9px;
   }
 

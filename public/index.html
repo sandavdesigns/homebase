@@ -10,25 +10,14 @@
   <body>
     <main class="shell">
       <section class="topbar">
-        <div>
-          <p class="kicker" id="dateLabel">Heute</p>
+        <div class="clock" aria-live="polite">
+          <span class="clock-date" id="dateLabel">Heute</span>
+          <span id="timeLabel">--:--</span>
+        </div>
+        <div class="brand-block">
           <h1 id="pageTitle">Homebase</h1>
           <p id="pageSubtitle"></p>
         </div>
-        <div class="clock" aria-live="polite">
-          <span class="clock-label">Jetzt</span>
-          <span id="timeLabel">--:--</span>
-        </div>
-      </section>
-
-      <section class="profile-bar" aria-label="Profil und Verwaltung">
-        <label class="compact-field">
-          <span>Profil</span>
-          <select id="profileSelect"></select>
-        </label>
-        <button id="newProfileButton" type="button">+ Profil</button>
-        <button id="deleteProfileButton" class="danger" type="button">Profil löschen</button>
-        <button id="adminButton" type="button" aria-pressed="false">Admin gesperrt</button>
       </section>
 
       <section class="command-row" aria-label="Startseitenwerkzeuge">
@@ -39,6 +28,11 @@
         </label>
         <button class="primary admin-only" id="addButton" type="button">+ Link</button>
         <button class="admin-only" id="newNoteButton" type="button">+ Notiz</button>
+        <button id="adminButton" type="button" aria-pressed="false">Admin gesperrt</button>
+        <label class="compact-field command-profile">
+          <span>Profil</span>
+          <select id="profileSelect"></select>
+        </label>
         <button class="admin-only" id="settingsButton" type="button">Einstellungen</button>
       </section>
 
@@ -228,6 +222,8 @@
           </label>
         </div>
         <div class="settings-actions" aria-label="Verwaltung">
+          <button id="newProfileButton" type="button">+ Profil</button>
+          <button id="deleteProfileButton" class="danger subtle-danger" type="button">Profil löschen</button>
           <button id="settingsCategoriesButton" type="button">Kategorien</button>
           <button id="settingsImportButton" type="button">Import</button>
           <a class="button" href="/api/homebase/export">Export</a>
