@@ -798,7 +798,7 @@ body[data-theme="time-circuit"] .group h2 {
 }
 
 .link-card.is-warning {
-  --service-glow: var(--warn);
+  --service-glow: var(--danger);
 }
 
 .link-card.is-offline {
