@@ -642,14 +642,14 @@ async function readAmpStatus(target, base) {
   if (cpu !== undefined) metrics.push({ label: "CPU", value: formatAmpMetric(cpu, "%") });
   if (memory !== undefined) metrics.push({ label: "RAM", value: formatAmpMetric(memory, "MB") });
   if (users !== undefined) metrics.push({ label: "User", value: String(users).slice(0, 24) });
-  if (target.debug === true) metrics.push(...getAmpDebugMetrics(source, mergedInstances));
 
   return {
     ...base,
     ok: true,
     status: "online",
     message: getAmpStatusMessage(source),
-    metrics
+    metrics,
+    debug: target.debug === true ? getAmpDebugLines(source, mergedInstances) : []
   };
 }
 
@@ -678,6 +678,9 @@ async function readAmpInstanceStatuses(target, sessionId) {
 async function readAmpInstanceCoreStatus(target, sessionId, instance) {
   const instanceId = getAmpInstanceId(instance);
   if (!instanceId) return {};
+  const instanceBase = new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/`, target.url).href;
+  const directStatus = await readAmpProxiedCoreStatus(instanceBase, sessionId);
+  if (Object.keys(directStatus).length) return { ...directStatus, InstanceID: instanceId, DebugSource: "proxy" };
   try {
     const login = await requestJsonPost(new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/Core/Login`, target.url).href, {
       body: {
@@ -690,26 +693,30 @@ async function readAmpInstanceCoreStatus(target, sessionId, instance) {
     });
     const instanceSessionId = login.sessionID || login.SESSIONID || login.sessionId || login.result?.sessionID;
     if (!instanceSessionId) return {};
-    const instanceBase = new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/`, target.url).href;
-    const status = await requestJsonPost(new URL("Core/GetStatus", instanceBase).href, {
-      body: { SESSIONID: instanceSessionId }
-    });
-    const updates = await requestJsonPost(new URL("Core/GetUpdates", instanceBase).href, {
-      body: { SESSIONID: instanceSessionId }
-    }).catch(() => ({}));
-    const statusSource = status.result || status;
-    const updateSource = updates.result || updates;
-    const liveStatus = updateSource.Status || updateSource.status || {};
-    return {
-      ...(liveStatus || {}),
-      ...status,
-      ...statusSource,
-      Updates: updateSource,
-      InstanceID: instanceId
-    };
+    const loginStatus = await readAmpProxiedCoreStatus(instanceBase, instanceSessionId);
+    return { ...loginStatus, InstanceID: instanceId, DebugSource: "instance-login" };
   } catch {
     return {};
   }
+}
+
+async function readAmpProxiedCoreStatus(instanceBase, sessionId) {
+  const status = await requestJsonPost(new URL("Core/GetStatus", instanceBase).href, {
+    body: { SESSIONID: sessionId }
+  }).catch(() => ({}));
+  const updates = await requestJsonPost(new URL("Core/GetUpdates", instanceBase).href, {
+    body: { SESSIONID: sessionId }
+  }).catch(() => ({}));
+  const statusSource = status.result || status;
+  const updateSource = updates.result || updates;
+  const liveStatus = updateSource.Status || updateSource.status || {};
+  if (!Object.keys(statusSource).length && !Object.keys(updateSource).length) return {};
+  return {
+    ...(liveStatus || {}),
+    ...status,
+    ...statusSource,
+    Updates: updateSource
+  };
 }
 
 async function readAmpApplicationStatus(_target, instance) {
@@ -972,18 +979,28 @@ function ignoreZeroMetric(value) {
   return value === 0 ? undefined : value;
 }
 
-function getAmpDebugMetrics(source, instances) {
-  const metrics = [];
-  const sourceMetricNames = Object.keys(source?.Metrics || source?.metrics || {}).slice(0, 4);
-  if (sourceMetricNames.length) metrics.push({ label: "Debug", value: sourceMetricNames.join(", ").slice(0, 36) });
-  const firstInstance = instances.find((instance) => instance && typeof instance === "object") || {};
-  const instanceMetricNames = Object.keys(firstInstance.Metrics || firstInstance.metrics || {}).slice(0, 4);
-  if (instanceMetricNames.length) metrics.push({ label: "Instanz", value: instanceMetricNames.join(", ").slice(0, 36) });
-  const stateKeys = Object.keys(firstInstance)
-    .filter((key) => /state|running|status|cpu|memory|ram|user|player/i.test(key))
-    .slice(0, 5);
-  if (stateKeys.length) metrics.push({ label: "Felder", value: stateKeys.join(", ").slice(0, 36) });
-  return metrics.slice(0, 3);
+function getAmpDebugLines(source, instances) {
+  const lines = [];
+  lines.push(`ADS state=${shortDebugValue(source?.State ?? source?.state ?? source?.Status ?? source?.status ?? "n/a")}`);
+  instances.slice(0, 8).forEach((instance, index) => {
+    const name = instance.FriendlyName || instance.InstanceName || instance.DisplayName || instance.Name || `Instanz ${index + 1}`;
+    const state = readAmpApplicationState(instance);
+    const raw = [
+      `app=${shortDebugValue(instance.AppState ?? instance.app_state)}`,
+      `state=${shortDebugValue(instance.State ?? instance.state)}`,
+      `live=${shortDebugValue(instance.Updates?.Status?.State ?? instance.Updates?.status?.state ?? instance.Status?.State ?? instance.status?.state)}`,
+      `running=${shortDebugValue(instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running)}`,
+      `src=${shortDebugValue(instance.DebugSource || "list")}`
+    ].join(" ");
+    lines.push(`${name}: online=${isAmpInstanceOnline(instance)} resolved=${shortDebugValue(state)} ${raw}`);
+  });
+  return lines;
+}
+
+function shortDebugValue(value) {
+  if (value === undefined || value === null || value === "") return "-";
+  if (typeof value === "object") return "{...}";
+  return String(value).slice(0, 24);
 }
 
 function getAmpStatusMessage(source) {

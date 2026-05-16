@@ -518,6 +518,12 @@ function createLinkStatus(status) {
 
   panel.append(line);
   if (metricItems.length) panel.append(metrics);
+  if (Array.isArray(status.debug) && status.debug.length) {
+    const debug = document.createElement("pre");
+    debug.className = "link-status-debug";
+    debug.textContent = status.debug.join("\n");
+    panel.append(debug);
+  }
   return panel;
 }
 
