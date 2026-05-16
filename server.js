@@ -738,16 +738,29 @@ function extractAmpInstances(response) {
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
-      const instances = candidate.flatMap((item) => isAmpInstanceLike(item) ? [item] : extractAmpInstances(item));
+      const instances = candidate.flatMap((item) => {
+        if (Array.isArray(item?.AvailableInstances) || Array.isArray(item?.availableInstances)) return extractAmpInstances(item);
+        return isAmpInstanceLike(item) ? [item] : extractAmpInstances(item);
+      });
       if (instances.length) return instances;
     }
     if (candidate && typeof candidate === "object") {
-      if (Array.isArray(candidate.AvailableInstances)) return candidate.AvailableInstances.filter(isAmpInstanceLike);
+      const availableInstances = Array.isArray(candidate.AvailableInstances)
+        ? candidate.AvailableInstances
+        : Array.isArray(candidate.availableInstances)
+          ? candidate.availableInstances
+          : undefined;
+      if (availableInstances) return availableInstances.filter(isAmpInstanceLike);
       if (isAmpInstanceLike(candidate)) return [candidate];
       const values = Object.values(candidate).filter((value) => value && typeof value === "object");
       const instances = values.flatMap((value) => {
+        const nestedInstances = Array.isArray(value.AvailableInstances)
+          ? value.AvailableInstances
+          : Array.isArray(value.availableInstances)
+            ? value.availableInstances
+            : undefined;
+        if (nestedInstances) return nestedInstances;
         if (isAmpInstanceLike(value)) return [value];
-        if (Array.isArray(value.AvailableInstances)) return value.AvailableInstances;
         return [];
       }).filter(isAmpInstanceLike);
       if (instances.length) return instances;
@@ -793,7 +806,7 @@ function isAmpDaemonInstance(instance) {
   if (instance.Daemon === true || instance.daemon === true) return true;
   const moduleName = getAmpModuleName(instance);
   const name = String(instance.InstanceName || instance.FriendlyName || instance.DisplayName || instance.Name || "").toLowerCase();
-  return /\b(ads|amp|admin|daemon)\b/i.test(moduleName) || /\b(ads|amp|admin|daemon)\b/i.test(name);
+  return /\b(ads|amp|admin|daemon)\b/i.test(moduleName) || /\b(ads|amp|admin|daemon|local instances|controller|target)\b/i.test(name);
 }
 
 function getAmpModuleName(instance) {
