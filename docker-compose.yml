@@ -1,7 +1,6 @@
 services:
   homebase:
     image: ${HOMEBASE_IMAGE:-ghcr.io/sandavdesigns/homebase:latest}
-    container_name: ${HOMEBASE_CONTAINER_NAME:-homebase}
     restart: unless-stopped
     ports:
       - "${HOMEBASE_PORT:-3000}:${HOMEBASE_INTERNAL_PORT:-3000}"
@@ -16,4 +15,3 @@ services:
 
 volumes:
   homebase_data:
-    name: ${HOMEBASE_VOLUME_NAME:-homebase_data}

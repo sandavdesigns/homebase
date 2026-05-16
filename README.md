@@ -50,9 +50,9 @@ Empfohlene Stack-Variablen:
 HOMEBASE_IMAGE=ghcr.io/sandavdesigns/homebase:latest
 HOMEBASE_PORT=3000
 HOMEBASE_INTERNAL_PORT=3000
-HOMEBASE_CONTAINER_NAME=homebase
-HOMEBASE_VOLUME_NAME=homebase_data
 ```
+
+Portainer/Docker Compose vergibt Container- und Volume-Namen automatisch mit dem Stack-Namen als Prefix. Dadurch koennen mehrere Homebase-Stacks parallel laufen.
 
 Alternativ kannst du in Portainer einen Stack direkt mit dem Image anlegen:
 
@@ -60,7 +60,6 @@ Alternativ kannst du in Portainer einen Stack direkt mit dem Image anlegen:
 services:
   homebase:
     image: ghcr.io/sandavdesigns/homebase:latest
-    container_name: homebase
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -93,8 +92,6 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 | `HOMEBASE_IMAGE` | `ghcr.io/sandavdesigns/homebase:latest` | Docker Image fuer den Stack. Fuer reproduzierbare Deployments auf einen Versions-Tag setzen. |
 | `HOMEBASE_PORT` | `3000` | Externer Host-Port. |
 | `HOMEBASE_INTERNAL_PORT` | `3000` | Interner Container-Port und Wert fuer `PORT`. Normalerweise unveraendert lassen. |
-| `HOMEBASE_CONTAINER_NAME` | `homebase` | Name des Containers. |
-| `HOMEBASE_VOLUME_NAME` | `homebase_data` | Name des Docker-Volumes fuer Daten und Favicons. |
 | `ADMIN_PASSWORD` | leer | Optionales Admin-Passwort. Alternativ kann das Passwort beim ersten Start im Setup gesetzt werden. |
 | `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Link-Statusanzeigen. Secrets bleiben in der Container-Umgebung. |
 
@@ -167,13 +164,13 @@ Wichtige Daten liegen im Docker-Volume:
 - `homebase.json`: Startseiten-Konfiguration
 - `favicons/`: Lokaler Favicon-Cache
 
-Ein einfaches Backup ist der JSON-Export aus dem Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume `HOMEBASE_VOLUME_NAME`.
+Ein einfaches Backup ist der JSON-Export aus dem Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume des Stacks, normalerweise `<stackname>_homebase_data`.
 
 Beispiel mit einem temporaeren Alpine-Container:
 
 ```bash
 docker run --rm \
-  -v homebase_data:/data:ro \
+  -v <stackname>_homebase_data:/data:ro \
   -v "$PWD":/backup \
   alpine tar czf /backup/homebase_data.tar.gz -C /data .
 ```
@@ -183,7 +180,7 @@ Restore:
 ```bash
 docker compose down
 docker run --rm \
-  -v homebase_data:/data \
+  -v <stackname>_homebase_data:/data \
   -v "$PWD":/backup \
   alpine sh -c "rm -rf /data/* && tar xzf /backup/homebase_data.tar.gz -C /data"
 docker compose up -d
