@@ -843,8 +843,7 @@ function isAmpInstanceLike(value) {
 function isAmpInstanceOnline(instance) {
   const runningValue = instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running;
   if (runningValue === true || runningValue === 1 || String(runningValue).toLowerCase() === "true") return true;
-  const numericState = Number(instance.State ?? instance.state ?? instance.AppState ?? instance.app_state);
-  if ([10, 20, 30].includes(numericState)) return true;
+  if (runningValue === false || runningValue === 0 || String(runningValue).toLowerCase() === "false") return false;
   const state = String(
     instance.Status ??
     instance.status ??
@@ -856,7 +855,8 @@ function isAmpInstanceOnline(instance) {
     instance.current_state ??
     ""
   ).toLowerCase();
-  return /\b(running|started|online|ready|active|available)\b/.test(state);
+  if (/\b(stopped|sleeping|offline|suspended|failed|stopping)\b/.test(state)) return false;
+  return /\b(running|started|online)\b/.test(state);
 }
 
 function readAmpCpuPercent(source) {
