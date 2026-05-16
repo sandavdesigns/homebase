@@ -855,11 +855,29 @@ function isAmpInstanceLike(value) {
 function isAmpInstanceOnline(instance) {
   if (instance.AppOnline === true) return true;
   if (instance.AppOnline === false) return false;
+  const portStatus = readAmpRequiredPortStatus(instance);
+  if (portStatus !== undefined) return portStatus;
   const appState = readAmpApplicationState(instance);
   if (appState !== undefined) return appState === 20 || /\b(ready|running|started|online)\b/i.test(String(appState));
   const runningValue = instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running;
   if (runningValue === false || runningValue === 0 || String(runningValue).toLowerCase() === "false") return false;
   return false;
+}
+
+function readAmpRequiredPortStatus(instance) {
+  const ports = [
+    ...(Array.isArray(instance?.Updates?.Ports) ? instance.Updates.Ports : []),
+    ...(Array.isArray(instance?.Updates?.ports) ? instance.Updates.ports : []),
+    ...(Array.isArray(instance?.Ports) ? instance.Ports : []),
+    ...(Array.isArray(instance?.ports) ? instance.ports : [])
+  ];
+  const relevantPorts = ports.filter((port) => {
+    const label = String(port.Name || port.name || port.Description || port.description || "").toLowerCase();
+    if (/amp|admin|web|metrics|rcon|query/.test(label)) return false;
+    return port.Required === true || port.required === true || /minecraft|game|server/.test(label);
+  });
+  if (!relevantPorts.length) return undefined;
+  return relevantPorts.some((port) => port.Listening === true || port.listening === true);
 }
 
 function readAmpApplicationState(instance) {
@@ -989,12 +1007,29 @@ function getAmpDebugLines(source, instances) {
       `app=${shortDebugValue(instance.AppState ?? instance.app_state)}`,
       `state=${shortDebugValue(instance.State ?? instance.state)}`,
       `live=${shortDebugValue(instance.Updates?.Status?.State ?? instance.Updates?.status?.state ?? instance.Status?.State ?? instance.status?.state)}`,
+      `ports=${shortDebugValue(formatAmpDebugPorts(instance))}`,
       `running=${shortDebugValue(instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running)}`,
       `src=${shortDebugValue(instance.DebugSource || "list")}`
     ].join(" ");
     lines.push(`${name}: online=${isAmpInstanceOnline(instance)} resolved=${shortDebugValue(state)} ${raw}`);
   });
   return lines;
+}
+
+function formatAmpDebugPorts(instance) {
+  const ports = [
+    ...(Array.isArray(instance?.Updates?.Ports) ? instance.Updates.Ports : []),
+    ...(Array.isArray(instance?.Updates?.ports) ? instance.Updates.ports : []),
+    ...(Array.isArray(instance?.Ports) ? instance.Ports : []),
+    ...(Array.isArray(instance?.ports) ? instance.ports : [])
+  ];
+  if (!ports.length) return "-";
+  return ports.slice(0, 4).map((port) => {
+    const name = String(port.Name || port.name || "port").replace(/\s+/g, "");
+    const number = port.Port || port.port || port.PortNumber || port.port_number || "?";
+    const listening = port.Listening ?? port.listening;
+    return `${name}:${number}:${listening === true ? "on" : "off"}`;
+  }).join(",");
 }
 
 function shortDebugValue(value) {
