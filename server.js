@@ -1,5 +1,6 @@
 const http = require("http");
 const https = require("https");
+const net = require("net");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -623,7 +624,8 @@ async function readAmpStatus(target, base) {
   const instances = filterAmpServerInstances(await readAmpInstances(target, sessionId));
   const instanceStatuses = filterAmpServerInstances(await readAmpInstanceStatuses(target, sessionId));
   const instanceStatusDetails = await Promise.all(instances.map((instance) => readAmpInstanceCoreStatus(target, sessionId, instance)));
-  const mergedInstances = mergeAmpInstances(instances.length ? instances : instanceStatuses, instanceStatuses, instanceStatusDetails);
+  let mergedInstances = mergeAmpInstances(instances.length ? instances : instanceStatuses, instanceStatuses, instanceStatusDetails);
+  mergedInstances = await Promise.all(mergedInstances.map((instance) => readAmpApplicationStatus(target, instance)));
   const totalInstances = mergedInstances.length;
   if (totalInstances) {
     const online = Math.min(mergedInstances.filter(isAmpInstanceOnline).length, totalInstances);
@@ -709,6 +711,22 @@ async function readAmpInstanceCoreStatus(target, sessionId, instance) {
   } catch {
     return {};
   }
+}
+
+async function readAmpApplicationStatus(target, instance) {
+  if (!isAmpMinecraftInstance(instance)) return instance;
+  const endpoint = getAmpMinecraftEndpoint(target, instance);
+  if (!endpoint) return instance;
+  const status = await pingMinecraftJava(endpoint.host, endpoint.port).catch(() => null);
+  if (!status) {
+    return { ...instance, AppOnline: false, AppPlayers: undefined };
+  }
+  return {
+    ...instance,
+    AppOnline: true,
+    AppPlayers: status.playersOnline,
+    AppMaxPlayers: status.playersMax
+  };
 }
 
 function extractAmpInstances(response) {
@@ -841,6 +859,9 @@ function isAmpInstanceLike(value) {
 }
 
 function isAmpInstanceOnline(instance) {
+  if (instance.AppOnline === true) return true;
+  if (instance.AppOnline === false) return false;
+  if (isAmpMinecraftInstance(instance)) return false;
   const runningValue = instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running;
   if (runningValue === true || runningValue === 1 || String(runningValue).toLowerCase() === "true") return true;
   if (runningValue === false || runningValue === 0 || String(runningValue).toLowerCase() === "false") return false;
@@ -880,6 +901,7 @@ function readAmpMemoryMb(source) {
 }
 
 function readAmpUsersOnline(source) {
+  if (source?.AppPlayers !== undefined) return source.AppPlayers;
   return ignoreZeroMetric(readAmpMetricValue(source, [
     "UsersOnline",
     "Active Users",
@@ -887,6 +909,135 @@ function readAmpUsersOnline(source) {
     "Players",
     "Players Online"
   ], ["RawValue", "rawValue", "Value", "value"]));
+}
+
+function isAmpMinecraftInstance(instance) {
+  return /minecraft/i.test([
+    getAmpModuleName(instance),
+    instance?.ModuleDisplayName,
+    instance?.InstanceName,
+    instance?.FriendlyName
+  ].filter(Boolean).join(" "));
+}
+
+function getAmpMinecraftEndpoint(target, instance) {
+  const endpoints = [
+    ...(Array.isArray(instance.ApplicationEndpoints) ? instance.ApplicationEndpoints : []),
+    ...(Array.isArray(instance.applicationEndpoints) ? instance.applicationEndpoints : []),
+    ...(Array.isArray(instance.Endpoints) ? instance.Endpoints : []),
+    ...(Array.isArray(instance.endpoints) ? instance.endpoints : [])
+  ];
+  for (const endpoint of endpoints) {
+    const label = String(endpoint.DisplayName || endpoint.Name || endpoint.name || endpoint.Endpoint || endpoint.Uri || "");
+    if (/web|amp|admin|query|rcon/i.test(label)) continue;
+    const parsed = parseEndpointAddress(endpoint.Endpoint || endpoint.Uri || endpoint.uri || endpoint.Address || endpoint.address);
+    if (parsed) return parsed;
+  }
+  const instancePort = Number(instance.MinecraftPort || instance.GamePort || instance.ServerPort || instance.port);
+  if (Number.isFinite(instancePort) && instancePort > 0 && instancePort !== Number(instance.Port)) {
+    return { host: getAmpEndpointHost(target, instance), port: instancePort };
+  }
+  return null;
+}
+
+function parseEndpointAddress(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw.includes("://") ? raw : `tcp://${raw}`);
+    const port = Number(parsed.port);
+    if (parsed.hostname && Number.isFinite(port) && port > 0) return { host: parsed.hostname, port };
+  } catch {
+    const match = raw.match(/([^:/\s]+):(\d{2,5})/);
+    if (match) return { host: match[1], port: Number(match[2]) };
+  }
+  return null;
+}
+
+function getAmpEndpointHost(target, instance) {
+  const host = String(instance.IP || instance.Ip || instance.ip || "").trim();
+  if (host && host !== "0.0.0.0" && host !== "::") return host;
+  return parseHttpUrl(target.url)?.hostname || "";
+}
+
+function pingMinecraftJava(host, port) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host, port, timeout: 2500 });
+    const fail = (error) => {
+      socket.destroy();
+      reject(error);
+    };
+    socket.once("timeout", () => fail(new Error("Minecraft timeout")));
+    socket.once("error", fail);
+    socket.once("connect", () => {
+      const hostBuffer = Buffer.from(host, "utf8");
+      const packet = Buffer.concat([
+        writeVarInt(0),
+        writeVarInt(765),
+        writeVarInt(hostBuffer.length),
+        hostBuffer,
+        Buffer.from([(port >> 8) & 0xff, port & 0xff]),
+        writeVarInt(1)
+      ]);
+      socket.write(Buffer.concat([writeVarInt(packet.length), packet, Buffer.from([0x01, 0x00])]));
+    });
+    let buffer = Buffer.alloc(0);
+    socket.on("data", (chunk) => {
+      buffer = Buffer.concat([buffer, chunk]);
+      const parsed = parseMinecraftStatus(buffer);
+      if (parsed) {
+        socket.end();
+        resolve(parsed);
+      }
+    });
+  });
+}
+
+function parseMinecraftStatus(buffer) {
+  let offset = 0;
+  const packetLength = readVarInt(buffer, offset);
+  if (!packetLength) return null;
+  offset = packetLength.offset;
+  if (buffer.length < offset + packetLength.value) return null;
+  const packetId = readVarInt(buffer, offset);
+  if (!packetId) return null;
+  offset = packetId.offset;
+  const jsonLength = readVarInt(buffer, offset);
+  if (!jsonLength) return null;
+  offset = jsonLength.offset;
+  if (buffer.length < offset + jsonLength.value) return null;
+  const data = JSON.parse(buffer.slice(offset, offset + jsonLength.value).toString("utf8"));
+  return {
+    playersOnline: Number(data.players?.online || 0),
+    playersMax: Number(data.players?.max || 0)
+  };
+}
+
+function writeVarInt(value) {
+  const bytes = [];
+  let number = value >>> 0;
+  do {
+    let byte = number & 0x7f;
+    number >>>= 7;
+    if (number !== 0) byte |= 0x80;
+    bytes.push(byte);
+  } while (number !== 0);
+  return Buffer.from(bytes);
+}
+
+function readVarInt(buffer, startOffset) {
+  let value = 0;
+  let position = 0;
+  let offset = startOffset;
+  while (offset < buffer.length) {
+    const current = buffer[offset];
+    value |= (current & 0x7f) << (7 * position);
+    offset += 1;
+    if ((current & 0x80) === 0) return { value, offset };
+    position += 1;
+    if (position > 5) return null;
+  }
+  return null;
 }
 
 function readAmpMetricValue(source, names, fields) {
