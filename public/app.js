@@ -73,8 +73,6 @@ const elements = {
   linkStatusApiKey: document.querySelector("#linkStatusApiKey"),
   linkStatusUsername: document.querySelector("#linkStatusUsername"),
   linkStatusPassword: document.querySelector("#linkStatusPassword"),
-  linkStatusGameHost: document.querySelector("#linkStatusGameHost"),
-  linkStatusGamePort: document.querySelector("#linkStatusGamePort"),
   linkStatusPath: document.querySelector("#linkStatusPath"),
   linkStatusDebug: document.querySelector("#linkStatusDebug"),
   deleteButton: document.querySelector("#deleteButton"),
@@ -560,8 +558,6 @@ function setLinkStatusWidgetForm(widget = {}) {
   elements.linkStatusApiKey.value = widget?.apiKey || "";
   elements.linkStatusUsername.value = widget?.username || "";
   elements.linkStatusPassword.value = widget?.password || "";
-  elements.linkStatusGameHost.value = widget?.gameHost || "";
-  elements.linkStatusGamePort.value = widget?.gamePort || "";
   elements.linkStatusPath.value = widget?.statusPath || "";
   elements.linkStatusDebug.checked = widget?.debug === true;
   renderLinkStatusFields();
@@ -672,8 +668,6 @@ async function saveLink() {
       apiKey: elements.linkStatusApiKey.value.trim(),
       username: elements.linkStatusUsername.value.trim(),
       password: elements.linkStatusPassword.value,
-      gameHost: elements.linkStatusGameHost.value.trim(),
-      gamePort: elements.linkStatusGamePort.value.trim(),
       statusPath: elements.linkStatusPath.value.trim(),
       debug: elements.linkStatusDebug.checked
     }
