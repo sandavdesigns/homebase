@@ -619,19 +619,24 @@ async function readAmpStatus(target, base) {
   });
   const metrics = [];
   const source = status.result || status;
-  const ampMetrics = source.Metrics || {};
-  const cpu = source.CPUUsage ?? ampMetrics["CPU Usage"]?.Percent ?? ampMetrics.CPU?.Percent;
-  const memory = source.MemoryUsageMB ?? ampMetrics["Memory Usage"]?.RawValue ?? ampMetrics.Memory?.RawValue;
-  const users = source.UsersOnline ?? ampMetrics["Active Users"]?.RawValue ?? ampMetrics.Users?.RawValue;
   const instances = await readAmpInstances(target, sessionId);
   const instanceStatuses = await readAmpInstanceStatuses(target, sessionId);
-  const totalInstances = instances.length || instanceStatuses.length;
+  const instanceStatusDetails = await Promise.all(instances.map((instance) => readAmpInstanceCoreStatus(target, sessionId, instance)));
+  const mergedInstances = mergeAmpInstanceSources(instances, instanceStatuses, instanceStatusDetails);
+  const totalInstances = mergedInstances.length;
   if (totalInstances) {
-    const online = instanceStatuses.length
-      ? instanceStatuses.filter(isAmpInstanceOnline).length
-      : instances.filter(isAmpInstanceOnline).length;
+    const online = mergedInstances.filter(isAmpInstanceOnline).length;
     metrics.push({ label: "Server", value: `${online}/${totalInstances}` });
   }
+  const cpu = totalInstances
+    ? averageNumbers(mergedInstances.map(readAmpCpuPercent))
+    : readAmpCpuPercent(source);
+  const memory = totalInstances
+    ? sumNumbers(mergedInstances.map(readAmpMemoryMb))
+    : readAmpMemoryMb(source);
+  const users = totalInstances
+    ? sumNumbers(mergedInstances.map(readAmpUsersOnline))
+    : readAmpUsersOnline(source);
   if (cpu !== undefined) metrics.push({ label: "CPU", value: formatAmpMetric(cpu, "%") });
   if (memory !== undefined) metrics.push({ label: "RAM", value: formatAmpMetric(memory, "MB") });
   if (users !== undefined) metrics.push({ label: "User", value: String(users).slice(0, 24) });
@@ -667,6 +672,34 @@ async function readAmpInstanceStatuses(target, sessionId) {
   }
 }
 
+async function readAmpInstanceCoreStatus(target, sessionId, instance) {
+  const instanceId = getAmpInstanceId(instance);
+  if (!instanceId) return {};
+  try {
+    const login = await requestJsonPost(new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/Core/Login`, target.url).href, {
+      body: {
+        SESSIONID: sessionId,
+        username: target.username,
+        password: target.password,
+        token: "",
+        rememberMe: true
+      }
+    });
+    const instanceSessionId = login.sessionID || login.SESSIONID || login.sessionId || login.result?.sessionID;
+    if (!instanceSessionId) return {};
+    const status = await requestJsonPost(new URL(`/API/ADSModule/Servers/${encodeURIComponent(instanceId)}/API/Core/GetStatus`, target.url).href, {
+      body: { SESSIONID: instanceSessionId }
+    });
+    return {
+      ...status,
+      ...(status.result || {}),
+      InstanceID: instanceId
+    };
+  } catch {
+    return {};
+  }
+}
+
 function extractAmpInstances(response) {
   const candidates = [
     response.result,
@@ -681,14 +714,44 @@ function extractAmpInstances(response) {
   ].filter(Boolean);
 
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate.filter(isAmpInstanceLike);
+    if (Array.isArray(candidate)) {
+      const instances = candidate.flatMap((item) => isAmpInstanceLike(item) ? [item] : extractAmpInstances(item));
+      if (instances.length) return instances;
+    }
     if (candidate && typeof candidate === "object") {
+      if (Array.isArray(candidate.AvailableInstances)) return candidate.AvailableInstances.filter(isAmpInstanceLike);
+      if (isAmpInstanceLike(candidate)) return [candidate];
       const values = Object.values(candidate).filter((value) => value && typeof value === "object");
-      const instances = values.filter(isAmpInstanceLike);
+      const instances = values.flatMap((value) => {
+        if (isAmpInstanceLike(value)) return [value];
+        if (Array.isArray(value.AvailableInstances)) return value.AvailableInstances;
+        return [];
+      }).filter(isAmpInstanceLike);
       if (instances.length) return instances;
     }
   }
   return [];
+}
+
+function mergeAmpInstanceSources(...sources) {
+  const map = new Map();
+  for (const source of sources.flat()) {
+    if (!source || typeof source !== "object") continue;
+    const id = getAmpInstanceId(source) || crypto.randomUUID();
+    map.set(id, { ...(map.get(id) || {}), ...source, InstanceID: id });
+  }
+  return [...map.values()];
+}
+
+function getAmpInstanceId(instance) {
+  return String(
+    instance?.InstanceID ??
+    instance?.InstanceId ??
+    instance?.instanceId ??
+    instance?.id ??
+    instance?.Id ??
+    ""
+  );
 }
 
 function isAmpInstanceLike(value) {
@@ -715,6 +778,8 @@ function isAmpInstanceLike(value) {
 function isAmpInstanceOnline(instance) {
   const runningValue = instance.Running ?? instance.running ?? instance.IsRunning ?? instance.is_running;
   if (runningValue === true || runningValue === 1 || String(runningValue).toLowerCase() === "true") return true;
+  const numericState = Number(instance.State ?? instance.state ?? instance.AppState ?? instance.app_state);
+  if ([10, 20, 30].includes(numericState)) return true;
   const state = String(
     instance.Status ??
     instance.status ??
@@ -727,6 +792,71 @@ function isAmpInstanceOnline(instance) {
     ""
   ).toLowerCase();
   return /\b(running|started|online|ready|active|available)\b/.test(state);
+}
+
+function readAmpCpuPercent(source) {
+  return readAmpMetricValue(source, [
+    "CPUUsage",
+    "CPU",
+    "CPU Usage",
+    "CPU Usage %",
+    "Processor Usage"
+  ], ["Percent", "percent", "RawValue", "rawValue", "Value", "value"]);
+}
+
+function readAmpMemoryMb(source) {
+  return readAmpMetricValue(source, [
+    "MemoryUsageMB",
+    "Memory",
+    "Memory Usage",
+    "RAM",
+    "RAM Usage"
+  ], ["RawValue", "rawValue", "Value", "value", "MB", "mb"]);
+}
+
+function readAmpUsersOnline(source) {
+  return readAmpMetricValue(source, [
+    "UsersOnline",
+    "Active Users",
+    "Users",
+    "Players",
+    "Players Online"
+  ], ["RawValue", "rawValue", "Value", "value"]);
+}
+
+function readAmpMetricValue(source, names, fields) {
+  if (!source || typeof source !== "object") return undefined;
+  for (const name of names) {
+    const direct = toFiniteNumber(source[name]);
+    if (direct !== undefined) return direct;
+  }
+  const metrics = source.Metrics || source.metrics || {};
+  for (const name of names) {
+    const metric = metrics[name] || metrics[name.toLowerCase()];
+    if (!metric || typeof metric !== "object") continue;
+    for (const field of fields) {
+      const value = toFiniteNumber(metric[field]);
+      if (value !== undefined) return value;
+    }
+  }
+  return undefined;
+}
+
+function averageNumbers(values) {
+  const numbers = values.map(toFiniteNumber).filter((value) => value !== undefined);
+  if (!numbers.length) return undefined;
+  return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+}
+
+function sumNumbers(values) {
+  const numbers = values.map(toFiniteNumber).filter((value) => value !== undefined);
+  if (!numbers.length) return undefined;
+  return numbers.reduce((sum, value) => sum + value, 0);
+}
+
+function toFiniteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
 }
 
 function getAmpStatusMessage(source) {
