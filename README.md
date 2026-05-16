@@ -50,9 +50,10 @@ Empfohlene Stack-Variablen:
 HOMEBASE_IMAGE=ghcr.io/sandavdesigns/homebase:latest
 HOMEBASE_PORT=3000
 HOMEBASE_INTERNAL_PORT=3000
+HOMEBASE_VOLUME_NAME=homebase_data
 ```
 
-Portainer/Docker Compose vergibt Container- und Volume-Namen automatisch mit dem Stack-Namen als Prefix. Dadurch koennen mehrere Homebase-Stacks parallel laufen.
+Portainer/Docker Compose vergibt den Container-Namen automatisch mit dem Stack-Namen als Prefix. Das Daten-Volume ist aus Kompatibilitaetsgruenden standardmaessig `homebase_data`, damit bestehende Installationen ihre Daten behalten. Fuer parallele Testinstallationen setze `HOMEBASE_VOLUME_NAME` auf einen eigenen Wert, zum Beispiel `homebase_test_data`.
 
 Alternativ kannst du in Portainer einen Stack direkt mit dem Image anlegen:
 
@@ -92,6 +93,7 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 | `HOMEBASE_IMAGE` | `ghcr.io/sandavdesigns/homebase:latest` | Docker Image fuer den Stack. Fuer reproduzierbare Deployments auf einen Versions-Tag setzen. |
 | `HOMEBASE_PORT` | `3000` | Externer Host-Port. |
 | `HOMEBASE_INTERNAL_PORT` | `3000` | Interner Container-Port und Wert fuer `PORT`. Normalerweise unveraendert lassen. |
+| `HOMEBASE_VOLUME_NAME` | `homebase_data` | Docker-Volume fuer Daten und Favicons. Fuer mehrere Stacks jeweils einen eigenen Namen setzen. |
 | `ADMIN_PASSWORD` | leer | Optionales Admin-Passwort. Alternativ kann das Passwort beim ersten Start im Setup gesetzt werden. |
 | `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Link-Statusanzeigen. Secrets bleiben in der Container-Umgebung. |
 
@@ -164,13 +166,13 @@ Wichtige Daten liegen im Docker-Volume:
 - `homebase.json`: Startseiten-Konfiguration
 - `favicons/`: Lokaler Favicon-Cache
 
-Ein einfaches Backup ist der JSON-Export aus dem Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume des Stacks, normalerweise `<stackname>_homebase_data`.
+Ein einfaches Backup ist der JSON-Export aus dem Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume aus `HOMEBASE_VOLUME_NAME`, standardmaessig `homebase_data`.
 
 Beispiel mit einem temporaeren Alpine-Container:
 
 ```bash
 docker run --rm \
-  -v <stackname>_homebase_data:/data:ro \
+  -v homebase_data:/data:ro \
   -v "$PWD":/backup \
   alpine tar czf /backup/homebase_data.tar.gz -C /data .
 ```
@@ -180,7 +182,7 @@ Restore:
 ```bash
 docker compose down
 docker run --rm \
-  -v <stackname>_homebase_data:/data \
+  -v homebase_data:/data \
   -v "$PWD":/backup \
   alpine sh -c "rm -rf /data/* && tar xzf /backup/homebase_data.tar.gz -C /data"
 docker compose up -d

@@ -15,3 +15,4 @@ services:
 
 volumes:
   homebase_data:
+    name: ${HOMEBASE_VOLUME_NAME:-homebase_data}
