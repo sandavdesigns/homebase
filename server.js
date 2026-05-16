@@ -623,6 +623,11 @@ async function readAmpStatus(target, base) {
   const cpu = source.CPUUsage ?? ampMetrics["CPU Usage"]?.Percent ?? ampMetrics.CPU?.Percent;
   const memory = source.MemoryUsageMB ?? ampMetrics["Memory Usage"]?.RawValue ?? ampMetrics.Memory?.RawValue;
   const users = source.UsersOnline ?? ampMetrics["Active Users"]?.RawValue ?? ampMetrics.Users?.RawValue;
+  const instances = await readAmpInstances(target, sessionId);
+  if (instances.length) {
+    const online = instances.filter(isAmpInstanceOnline).length;
+    metrics.push({ label: "Server", value: `${online}/${instances.length}` });
+  }
   if (cpu !== undefined) metrics.push({ label: "CPU", value: formatAmpMetric(cpu, "%") });
   if (memory !== undefined) metrics.push({ label: "RAM", value: formatAmpMetric(memory, "MB") });
   if (users !== undefined) metrics.push({ label: "User", value: String(users).slice(0, 24) });
@@ -634,6 +639,68 @@ async function readAmpStatus(target, base) {
     message: getAmpStatusMessage(source),
     metrics
   };
+}
+
+async function readAmpInstances(target, sessionId) {
+  try {
+    const response = await requestJsonPost(new URL("/API/ADSModule/GetInstances", target.url).href, {
+      body: { SESSIONID: sessionId }
+    });
+    return extractAmpInstances(response);
+  } catch {
+    return [];
+  }
+}
+
+function extractAmpInstances(response) {
+  const candidates = [
+    response.result,
+    response.Result,
+    response.instances,
+    response.Instances,
+    response.availableInstances,
+    response.AvailableInstances,
+    response.data,
+    response.Data,
+    response
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate.filter(isAmpInstanceLike);
+    if (candidate && typeof candidate === "object") {
+      const values = Object.values(candidate).filter((value) => value && typeof value === "object");
+      const instances = values.filter(isAmpInstanceLike);
+      if (instances.length) return instances;
+    }
+  }
+  return [];
+}
+
+function isAmpInstanceLike(value) {
+  return Boolean(value && typeof value === "object" && (
+    value.InstanceID ||
+    value.InstanceName ||
+    value.FriendlyName ||
+    value.DisplayName ||
+    value.Module ||
+    value.ModuleName ||
+    value.AppState ||
+    value.State ||
+    value.Status ||
+    value.Running !== undefined
+  ));
+}
+
+function isAmpInstanceOnline(instance) {
+  if (instance.Running === true || instance.IsRunning === true) return true;
+  const state = String(
+    instance.Status ??
+    instance.State ??
+    instance.AppState ??
+    instance.CurrentState ??
+    ""
+  ).toLowerCase();
+  return /\b(running|started|online|ready|active|available)\b/.test(state);
 }
 
 function getAmpStatusMessage(source) {
