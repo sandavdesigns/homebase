@@ -361,14 +361,34 @@ body[data-theme="time-circuit"] #timeLabel {
 }
 
 .profile-bar {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.profile-bar {
-  grid-template-columns: minmax(180px, 1fr) auto auto minmax(160px, 220px) auto;
+.profile-bar .compact-field {
+  flex: 0 1 380px;
+  min-width: 220px;
+}
+
+#newProfileButton,
+#deleteProfileButton {
+  min-height: 34px;
+  padding-inline: 10px;
+  font-size: 0.84rem;
+}
+
+#deleteProfileButton {
+  color: color-mix(in srgb, var(--danger), white 18%);
+  background: color-mix(in srgb, var(--danger), transparent 88%);
+  border-color: color-mix(in srgb, var(--danger), transparent 62%);
+  box-shadow: none;
+}
+
+#adminButton {
+  margin-left: auto;
 }
 
 .command-row {
@@ -377,6 +397,10 @@ body[data-theme="time-circuit"] #timeLabel {
   gap: 8px;
   align-items: end;
   margin-bottom: 12px;
+}
+
+#settingsButton {
+  margin-left: auto;
 }
 
 .profile-bar button,
@@ -1307,7 +1331,11 @@ dialog::backdrop {
 
 @media (max-width: 920px) {
   .profile-bar {
-    grid-template-columns: minmax(180px, 1fr) 1fr;
+    align-items: stretch;
+  }
+
+  #adminButton {
+    margin-left: 0;
   }
 
   .widgets {
@@ -1327,6 +1355,14 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 
+  .profile-bar {
+    display: grid;
+  }
+
+  .profile-bar .compact-field {
+    min-width: 0;
+  }
+
   .topbar {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
@@ -1334,6 +1370,10 @@ dialog::backdrop {
 
   .command-row {
     align-items: stretch;
+  }
+
+  #settingsButton {
+    margin-left: 0;
   }
 
   .command-row button,

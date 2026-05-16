@@ -28,6 +28,7 @@ const elements = {
   searchPanel: document.querySelector("#searchPanel"),
   searchToggleButton: document.querySelector("#searchToggleButton"),
   addButton: document.querySelector("#addButton"),
+  newNoteButton: document.querySelector("#newNoteButton"),
   settingsButton: document.querySelector("#settingsButton"),
   adminButton: document.querySelector("#adminButton"),
   profileSelect: document.querySelector("#profileSelect"),
@@ -86,7 +87,6 @@ const elements = {
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
-  settingsAddNoteButton: document.querySelector("#settingsAddNoteButton"),
   settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
   settingsImportButton: document.querySelector("#settingsImportButton"),
   saveSettingsButton: document.querySelector("#saveSettingsButton"),
@@ -648,6 +648,7 @@ function openSettingsDialog() {
   if (!canEdit()) return openAdminDialog();
   elements.settingsTitle.value = state.title;
   elements.settingsSubtitle.value = state.subtitle;
+  elements.themeSelect.value = state.theme || "retro";
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
   elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
   elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
@@ -788,6 +789,7 @@ async function saveSettings() {
   if (!elements.settingsForm.reportValidity()) return;
   state.title = elements.settingsTitle.value.trim();
   state.subtitle = elements.settingsSubtitle.value.trim();
+  state.theme = elements.themeSelect.value || "retro";
   state.preferences = {
     ...(state.preferences || {}),
     showCategoryCounts: elements.settingShowCategoryCounts.checked,
@@ -929,7 +931,7 @@ elements.searchToggleButton.addEventListener("click", () => {
 });
 elements.addButton.addEventListener("click", () => openLinkDialog());
 elements.settingsButton.addEventListener("click", openSettingsDialog);
-elements.settingsAddNoteButton.addEventListener("click", openNoteComposer);
+elements.newNoteButton.addEventListener("click", openNoteComposer);
 elements.settingsCategoriesButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openCategoriesDialog();
@@ -956,10 +958,6 @@ elements.profileSelect.addEventListener("change", async (event) => {
   state.activeProfileId = event.target.value;
   syncActiveProfileAliases();
   await saveData("Profil gewechselt");
-});
-elements.themeSelect.addEventListener("change", async (event) => {
-  state.theme = event.target.value;
-  await saveData("Theme gespeichert");
 });
 elements.addNoteButton.addEventListener("click", async () => {
   if (!canEdit()) return openAdminDialog();

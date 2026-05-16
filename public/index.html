@@ -28,16 +28,6 @@
         </label>
         <button id="newProfileButton" type="button">+ Profil</button>
         <button id="deleteProfileButton" class="danger" type="button">Profil löschen</button>
-        <label class="compact-field">
-          <span>Theme</span>
-          <select id="themeSelect">
-            <option value="retro">Retro</option>
-            <option value="time-circuit">Time Circuit</option>
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-            <option value="terminal">Terminal</option>
-          </select>
-        </label>
         <button id="adminButton" type="button" aria-pressed="false">Admin gesperrt</button>
       </section>
 
@@ -48,6 +38,7 @@
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
         </label>
         <button class="primary admin-only" id="addButton" type="button">+ Link</button>
+        <button class="admin-only" id="newNoteButton" type="button">+ Notiz</button>
         <button class="admin-only" id="settingsButton" type="button">Einstellungen</button>
       </section>
 
@@ -208,6 +199,16 @@
           Untertitel
           <input id="settingsSubtitle" maxlength="140" />
         </label>
+        <label>
+          Theme
+          <select id="themeSelect">
+            <option value="retro">Retro</option>
+            <option value="time-circuit">Time Circuit</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="terminal">Terminal</option>
+          </select>
+        </label>
         <div class="settings-options" aria-label="Anzeige">
           <label class="toggle-row">
             <input id="settingShowCategoryCounts" type="checkbox" />
@@ -227,7 +228,6 @@
           </label>
         </div>
         <div class="settings-actions" aria-label="Verwaltung">
-          <button id="settingsAddNoteButton" type="button">Neue Notiz</button>
           <button id="settingsCategoriesButton" type="button">Kategorien</button>
           <button id="settingsImportButton" type="button">Import</button>
           <a class="button" href="/api/homebase/export">Export</a>
