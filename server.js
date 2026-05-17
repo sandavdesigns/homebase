@@ -36,6 +36,7 @@ const defaultData = {
     notes: []
   },
   preferences: {
+    startpageMode: true,
     showCategoryCounts: false,
     showLinkStatus: true,
     showNotes: true,
@@ -181,6 +182,7 @@ function normalizeWidgets(widgets) {
 
 function normalizePreferences(preferences) {
   return {
+    startpageMode: preferences?.startpageMode !== false,
     showCategoryCounts: preferences?.showCategoryCounts === true,
     showLinkStatus: preferences?.showLinkStatus !== false,
     showNotes: preferences?.showNotes !== false,

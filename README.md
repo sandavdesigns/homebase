@@ -5,13 +5,14 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 ## Funktionen
 
 - Browserbasierte Pflege von Links, Kategorien, Profilen, Notizen, Titel und Untertitel
-- Einklappbare Suche ueber Linktitel, Kategorie und Notiz
+- Einklappbare Suche ueber Linktitel, Kategorie und Notiz, auch per `Cmd+K`/`Ctrl+K`
 - Automatisch gruppierte Kategorien mit alphabetischer Sortierung
-- JSON-Import und JSON-Export der aktuellen Konfiguration
+- JSON-Backup/Restore in der UI
+- Import von Browser-Bookmarks als HTML-Datei
 - Automatischer Favicon-Abruf mit lokalem Cache
 - Optionale Link-Statusanzeigen fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
 - Themes: Retro, Time Circuit, Dark, Light und Terminal
-- Optionaler Admin-Modus mit Passwortschutz fuer Bearbeitung
+- Startseiten-Modus fuer normale Nutzung und optionaler Admin-Modus fuer Bearbeitung
 - Widgets fuer Uhr und mehrere Notizen
 
 ## Erster Start
@@ -54,6 +55,13 @@ HOMEBASE_VOLUME_NAME=homebase_data
 ```
 
 Portainer/Docker Compose vergibt den Container-Namen automatisch mit dem Stack-Namen als Prefix. Das Daten-Volume ist aus Kompatibilitaetsgruenden standardmaessig `homebase_data`, damit bestehende Installationen ihre Daten behalten. Fuer parallele Testinstallationen setze `HOMEBASE_VOLUME_NAME` auf einen eigenen Wert, zum Beispiel `homebase_test_data`.
+
+Testhinweise fuer Portainer:
+
+- Fuer Tests einen eigenen externen Port und ein eigenes Volume verwenden, zum Beispiel `HOMEBASE_PORT=3001` und `HOMEBASE_VOLUME_NAME=homebase_test_data`.
+- Vor Restore-Tests ein Backup ueber die UI oder das Docker-Volume erstellen.
+- Nach Deploy oder Update `http://<server-ip>:<port>/api/health` pruefen und die Startseite im Browser neu laden.
+- Wenn das Image auf `latest` steht, in Portainer vor dem Test ein Pull/Redeploy ausfuehren.
 
 Alternativ kannst du in Portainer einen Stack direkt mit dem Image anlegen:
 
@@ -129,7 +137,7 @@ Profile werden direkt im Browser verwaltet. Jedes Profil hat eigene Kategorien u
 
 ## Admin-Modus
 
-Wenn ein Admin-Passwort gesetzt ist, bleibt die Startseite sichtbar, aber Bearbeiten, Import, Export und Profilverwaltung sind gesperrt. Ueber `Admin gesperrt` kannst du entsperren. Ueber `Admin offen` sperrst du die Bearbeitung wieder.
+Homebase startet im Startseiten-Modus: Links und Widgets sind sichtbar, Bearbeitung bleibt verborgen. Wenn ein Admin-Passwort gesetzt ist, sind Bearbeiten, Import, Backup/Restore und Profilverwaltung gesperrt. Ueber `Admin gesperrt` kannst du entsperren. Ueber `Admin offen` sperrst du die Bearbeitung wieder.
 
 Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt werden oder beim ersten Start im Setup. Das Setup-Passwort wird gehasht in `homebase.json` gespeichert.
 
@@ -137,19 +145,25 @@ Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt
 
 Das Theme-Dropdown wechselt zwischen `Retro`, `Time Circuit`, `Dark`, `Light` und `Terminal`. Die Auswahl wird in `homebase.json` gespeichert.
 
-## Import und Export
+## Import, Backup und Restore
 
-Export:
+Backup:
 
-- Im Browser auf `Export` klicken.
+- Im Browser unter `Einstellungen` ein Backup herunterladen.
 - Alternativ `http://<server-ip>:<port>/api/homebase/export` aufrufen.
 - Die Datei wird als `homebase.json` heruntergeladen.
 
-Import:
+Restore:
 
-- Im Browser auf `Import` klicken.
+- Im Browser unter `Einstellungen` ein Restore starten.
 - JSON-Datei auswaehlen oder JSON direkt einfuegen.
 - `Importieren` ersetzt die aktuelle Konfiguration.
+
+Browser-Bookmarks:
+
+- HTML-Export aus dem Browser waehlen, zum Beispiel `bookmarks.html`.
+- Homebase liest Ordner als Kategorien und Lesezeichen als Links ein.
+- Pruefe nach dem Import Kategorien, Dubletten und fehlende URLs.
 
 Die Datei liegt im Container unter:
 
@@ -166,7 +180,7 @@ Wichtige Daten liegen im Docker-Volume:
 - `homebase.json`: Startseiten-Konfiguration
 - `favicons/`: Lokaler Favicon-Cache
 
-Ein einfaches Backup ist der JSON-Export aus dem Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume aus `HOMEBASE_VOLUME_NAME`, standardmaessig `homebase_data`.
+Ein einfaches Backup ist der UI-Backup-Download im Browser. Fuer ein vollstaendiges Volume-Backup sichere das Docker-Volume aus `HOMEBASE_VOLUME_NAME`, standardmaessig `homebase_data`.
 
 Beispiel mit einem temporaeren Alpine-Container:
 
@@ -268,13 +282,14 @@ Nach dem Update:
 
 - `http://<server-ip>:<port>/api/health` sollte `{"ok":true}` liefern.
 - Startseite im Browser neu laden.
-- Export testen, wenn Datenmigrationen erwartet werden.
+- Backup und Restore testen, wenn Datenmigrationen erwartet werden.
 
 ## Bedienung im Browser
 
 - `+ Link` legt neue Links an.
 - `...` an einem Link bearbeitet oder loescht ihn.
 - `+ Profil` erstellt ein weiteres Profil.
-- `Einstellungen` aendert Titel, Untertitel, Anzeigeoptionen, Kategorien, Import und Export.
+- `Cmd+K` oder `Ctrl+K` oeffnet die schnelle Suche.
+- `Einstellungen` aendert Titel, Untertitel, Anzeigeoptionen, Kategorien, Import, Backup und Restore.
 
 Kategorien und Links werden alphabetisch angezeigt. Linkkarten zeigen Titel, Favicon und optionale Notiz; die URL bleibt als Klickziel hinterlegt, wird aber nicht extra angezeigt.

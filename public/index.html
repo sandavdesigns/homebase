@@ -146,11 +146,11 @@
             </label>
             <label data-status-field="proxmox">
               Proxmox Token-Secret
-              <input id="linkStatusTokenSecret" autocomplete="off" />
+              <input id="linkStatusTokenSecret" type="password" autocomplete="off" />
             </label>
             <label data-status-field="unraid">
               Unraid API-Key
-              <input id="linkStatusApiKey" autocomplete="off" />
+              <input id="linkStatusApiKey" type="password" autocomplete="off" />
             </label>
             <label data-status-field="amp">
               AMP Benutzer
@@ -168,6 +168,7 @@
               <input id="linkStatusDebug" type="checkbox" />
               <span>AMP Debug anzeigen</span>
             </label>
+            <button id="toggleSecretFieldsButton" class="subtle-button" type="button">Zugangsdaten anzeigen</button>
           </div>
         </div>
         <footer>
@@ -205,6 +206,10 @@
         </label>
         <div class="settings-options" aria-label="Anzeige">
           <label class="toggle-row">
+            <input id="settingStartpageMode" type="checkbox" />
+            <span>Startseiten-Modus</span>
+          </label>
+          <label class="toggle-row">
             <input id="settingShowCategoryCounts" type="checkbox" />
             <span>Kategorie-Zahlen anzeigen</span>
           </label>
@@ -225,8 +230,10 @@
           <button id="newProfileButton" type="button">+ Profil</button>
           <button id="deleteProfileButton" class="danger subtle-danger" type="button">Profil löschen</button>
           <button id="settingsCategoriesButton" type="button">Kategorien</button>
+          <button id="settingsBookmarkImportButton" type="button">Bookmarks</button>
           <button id="settingsImportButton" type="button">Import</button>
-          <a class="button" href="/api/homebase/export">Export</a>
+          <button id="settingsBackupButton" type="button">Backup</button>
+          <button id="settingsRestoreButton" type="button">Restore</button>
         </div>
         <footer>
           <span></span>
@@ -275,15 +282,16 @@
     <dialog id="importDialog">
       <form method="dialog" class="dialog-card" id="importForm">
         <header>
-          <h2>JSON importieren</h2>
+          <h2 id="importDialogTitle">Importieren</h2>
           <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
         </header>
+        <input type="hidden" id="importMode" value="json" />
         <label>
           Datei
-          <input id="importFile" type="file" accept="application/json,.json" />
+          <input id="importFile" type="file" accept="application/json,.json,text/html,.html,.htm" />
         </label>
         <label>
-          JSON
+          Daten
           <textarea id="importText" rows="8" placeholder='{"profiles":[...]}'></textarea>
         </label>
         <footer>
@@ -292,6 +300,27 @@
           <button value="cancel" formnovalidate type="submit">Abbrechen</button>
           <button class="primary" id="runImportButton" value="default" type="button">Importieren</button>
         </footer>
+      </form>
+    </dialog>
+
+    <dialog id="commandDialog">
+      <form method="dialog" class="dialog-card command-dialog" id="commandForm">
+        <header>
+          <h2>Suchen</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <input id="commandInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
+        <div id="commandResults" class="command-results"></div>
+      </form>
+    </dialog>
+
+    <dialog id="statusDetailDialog">
+      <form method="dialog" class="dialog-card status-detail-dialog">
+        <header>
+          <h2 id="statusDetailTitle">Status</h2>
+          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
+        </header>
+        <div id="statusDetailBody" class="status-detail-body"></div>
       </form>
     </dialog>
 

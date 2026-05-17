@@ -8,7 +8,7 @@ const state = {
   categories: [],
   links: [],
   widgets: { clock: true, notes: [] },
-  preferences: { showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
+  preferences: { startpageMode: true, showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
   statusLoading: false,
@@ -76,6 +76,7 @@ const elements = {
   linkStatusPassword: document.querySelector("#linkStatusPassword"),
   linkStatusPath: document.querySelector("#linkStatusPath"),
   linkStatusDebug: document.querySelector("#linkStatusDebug"),
+  toggleSecretFieldsButton: document.querySelector("#toggleSecretFieldsButton"),
   deleteButton: document.querySelector("#deleteButton"),
   saveLinkButton: document.querySelector("#saveLinkButton"),
   testLinkButton: document.querySelector("#testLinkButton"),
@@ -87,8 +88,12 @@ const elements = {
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
+  settingStartpageMode: document.querySelector("#settingStartpageMode"),
   settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
+  settingsBookmarkImportButton: document.querySelector("#settingsBookmarkImportButton"),
   settingsImportButton: document.querySelector("#settingsImportButton"),
+  settingsBackupButton: document.querySelector("#settingsBackupButton"),
+  settingsRestoreButton: document.querySelector("#settingsRestoreButton"),
   saveSettingsButton: document.querySelector("#saveSettingsButton"),
   categoryEditor: document.querySelector("#categoryEditor"),
   addCategoryButton: document.querySelector("#addCategoryButton"),
@@ -96,8 +101,17 @@ const elements = {
   profileName: document.querySelector("#profileName"),
   saveProfileButton: document.querySelector("#saveProfileButton"),
   importFile: document.querySelector("#importFile"),
+  importMode: document.querySelector("#importMode"),
+  importDialogTitle: document.querySelector("#importDialogTitle"),
   importText: document.querySelector("#importText"),
   runImportButton: document.querySelector("#runImportButton"),
+  commandDialog: document.querySelector("#commandDialog"),
+  commandForm: document.querySelector("#commandForm"),
+  commandInput: document.querySelector("#commandInput"),
+  commandResults: document.querySelector("#commandResults"),
+  statusDetailDialog: document.querySelector("#statusDetailDialog"),
+  statusDetailTitle: document.querySelector("#statusDetailTitle"),
+  statusDetailBody: document.querySelector("#statusDetailBody"),
   toast: document.querySelector("#toast")
 };
 
@@ -218,6 +232,7 @@ function render() {
 function renderAdminState() {
   const editable = canEdit();
   document.body.classList.toggle("is-locked", !editable);
+  document.body.classList.toggle("is-startpage-mode", state.preferences?.startpageMode !== false);
   elements.locked.hidden = editable;
   elements.adminButton.textContent = state.auth?.enabled ? (editable ? "Admin offen" : "Admin gesperrt") : "Admin aus";
   elements.adminButton.classList.toggle("is-unlocked", editable);
@@ -540,6 +555,18 @@ function getStatusForLink(link) {
 function createLinkStatus(status) {
   const panel = document.createElement("div");
   panel.className = "link-status-panel";
+  panel.role = "button";
+  panel.tabIndex = 0;
+  panel.ariaLabel = `Details zu ${status.name || "Status"} anzeigen`;
+  const openDetails = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openStatusDetail(status);
+  };
+  panel.addEventListener("click", openDetails);
+  panel.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") openDetails(event);
+  });
 
   const line = document.createElement("p");
   line.className = "link-status-line";
@@ -583,6 +610,32 @@ function createLinkStatus(status) {
     panel.append(debug);
   }
   return panel;
+}
+
+function openStatusDetail(status) {
+  elements.statusDetailTitle.textContent = status.name || "Status";
+  const body = document.createElement("div");
+  body.className = `service-card is-${status.status || "offline"}`;
+  const message = document.createElement("p");
+  message.className = "service-message";
+  message.textContent = status.message || (status.ok ? "Erreichbar" : "Nicht erreichbar");
+  const metrics = document.createElement("div");
+  metrics.className = "service-metrics";
+  const metricItems = Array.isArray(status.metrics) ? status.metrics : [];
+  metrics.replaceChildren(
+    ...(metricItems.length ? metricItems.map(createStatusMetric) : [createStatusMetric({ label: "Status", value: status.ok ? "OK" : "Fehler" })])
+  );
+  body.append(message, metrics);
+  const details = createStatusDetails(status.details);
+  if (details) body.append(details);
+  if (Array.isArray(status.debug) && status.debug.length) {
+    const debug = document.createElement("pre");
+    debug.className = "link-status-debug";
+    debug.textContent = status.debug.join("\n");
+    body.append(debug);
+  }
+  elements.statusDetailBody.replaceChildren(body);
+  elements.statusDetailDialog.showModal();
 }
 
 function getStatusMetricKind(label) {
@@ -630,6 +683,10 @@ function setLinkStatusWidgetForm(widget = {}) {
   elements.linkStatusApiKey.value = widget?.apiKey || "";
   elements.linkStatusUsername.value = widget?.username || "";
   elements.linkStatusPassword.value = widget?.password || "";
+  elements.linkStatusTokenSecret.type = "password";
+  elements.linkStatusApiKey.type = "password";
+  elements.linkStatusPassword.type = "password";
+  elements.toggleSecretFieldsButton.textContent = "Zugangsdaten anzeigen";
   elements.linkStatusPath.value = widget?.statusPath || "";
   elements.linkStatusDebug.checked = widget?.debug === true;
   renderLinkStatusFields();
@@ -644,6 +701,15 @@ function renderLinkStatusFields() {
   });
 }
 
+function toggleSecretFields() {
+  const secretInputs = [elements.linkStatusTokenSecret, elements.linkStatusApiKey, elements.linkStatusPassword];
+  const reveal = secretInputs.some((input) => input.type === "password");
+  secretInputs.forEach((input) => {
+    input.type = reveal ? "text" : "password";
+  });
+  elements.toggleSecretFieldsButton.textContent = reveal ? "Zugangsdaten verbergen" : "Zugangsdaten anzeigen";
+}
+
 function openSettingsDialog() {
   if (!canEdit()) return openAdminDialog();
   elements.settingsTitle.value = state.title;
@@ -653,6 +719,7 @@ function openSettingsDialog() {
   elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
   elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
   elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
+  elements.settingStartpageMode.checked = state.preferences?.startpageMode !== false;
   elements.settingsDialog.showModal();
 }
 
@@ -795,7 +862,8 @@ async function saveSettings() {
     showCategoryCounts: elements.settingShowCategoryCounts.checked,
     showLinkStatus: elements.settingShowLinkStatus.checked,
     showNotes: elements.settingShowNotes.checked,
-    openLinksInNewTab: elements.settingOpenLinksInNewTab.checked
+    openLinksInNewTab: elements.settingOpenLinksInNewTab.checked,
+    startpageMode: elements.settingStartpageMode.checked
   };
   await saveData("Einstellungen gespeichert");
   elements.settingsDialog.close();
@@ -828,10 +896,60 @@ async function deleteProfile() {
   await saveData("Profil gelöscht");
 }
 
+function openImportDialog(mode = "json") {
+  if (!canEdit()) return openAdminDialog();
+  const config = {
+    json: {
+      title: "Importieren",
+      button: "Importieren",
+      accept: "application/json,.json",
+      placeholder: "{\"profiles\":[...]}"
+    },
+    restore: {
+      title: "Backup wiederherstellen",
+      button: "Wiederherstellen",
+      accept: "application/json,.json",
+      placeholder: "{\"profiles\":[...]}"
+    },
+    bookmarks: {
+      title: "Browser-Bookmarks importieren",
+      button: "Bookmarks importieren",
+      accept: "text/html,.html,.htm",
+      placeholder: "<!DOCTYPE NETSCAPE-Bookmark-file-1>"
+    }
+  }[mode] || {};
+  elements.importMode.value = mode;
+  elements.importDialogTitle.textContent = config.title || "Importieren";
+  elements.importFile.accept = config.accept || "application/json,.json";
+  elements.importText.placeholder = config.placeholder || "";
+  elements.runImportButton.textContent = config.button || "Importieren";
+  elements.importFile.value = "";
+  elements.importText.value = "";
+  elements.importDialog.showModal();
+}
+
+function downloadBackup() {
+  if (!canEdit()) return openAdminDialog();
+  const link = document.createElement("a");
+  link.href = "/api/homebase/export";
+  link.download = "homebase.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
 async function runImport() {
   let text = elements.importText.value.trim();
   if (!text && elements.importFile.files[0]) text = await elements.importFile.files[0].text();
-  if (!text) return showToast("Keine JSON-Daten");
+  const mode = elements.importMode.value || "json";
+  if (!text) return showToast(mode === "bookmarks" ? "Keine Bookmark-Daten" : "Keine JSON-Daten");
+  if (mode === "bookmarks") {
+    const count = await importBookmarks(text);
+    elements.importDialog.close();
+    showToast(`${count} Bookmarks importiert`);
+    return;
+  }
+  if (mode === "restore" && !window.confirm("Backup wirklich wiederherstellen? Die aktuelle Konfiguration wird ersetzt.")) return;
   const response = await fetch("/api/import", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -843,6 +961,70 @@ async function runImport() {
   render();
   elements.importDialog.close();
   showToast("Importiert");
+}
+
+async function importBookmarks(html) {
+  const bookmarks = parseBookmarkHtml(html);
+  if (!bookmarks.length) throw new Error("Keine Bookmarks gefunden");
+  const knownCategories = new Set(getCategoryNames());
+  const knownLinks = new Set(state.links.map((link) => `${normalizeUrl(link.url)}::${normalizeMatchText(link.title)}`));
+  const nextLinks = [];
+  for (const bookmark of bookmarks) {
+    const title = bookmark.title.trim();
+    const url = normalizeUrl(bookmark.url);
+    const category = bookmark.category || "Bookmarks";
+    if (!title || !url) continue;
+    const key = `${url}::${normalizeMatchText(title)}`;
+    if (knownLinks.has(key)) continue;
+    knownLinks.add(key);
+    knownCategories.add(category);
+    nextLinks.push({
+      id: createId(),
+      title,
+      url,
+      category,
+      note: "",
+      statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
+    });
+  }
+  if (!nextLinks.length) throw new Error("Keine neuen Bookmarks gefunden");
+  state.categories = [...knownCategories].map((name) => {
+    const existing = state.categories.find((category) => category.name === name);
+    return existing || { id: createId(), name };
+  }).sort((a, b) => compareNames(a.name, b.name));
+  state.links = [...state.links, ...nextLinks];
+  await saveData("Bookmarks importiert");
+  return nextLinks.length;
+}
+
+function parseBookmarkHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const root = doc.querySelector("dl") || doc.body;
+  const bookmarks = [];
+  const visit = (node, category = "Bookmarks") => {
+    let child = node.firstElementChild;
+    while (child) {
+      if (child.tagName === "DT") {
+        const folder = child.querySelector(":scope > h3");
+        const link = child.querySelector(":scope > a");
+        if (folder) {
+          const nextCategory = folder.textContent.trim() || category;
+          const nested = child.querySelector(":scope > dl") || (child.nextElementSibling?.tagName === "DL" ? child.nextElementSibling : null);
+          if (nested) visit(nested, nextCategory);
+        } else if (link) {
+          const href = link.getAttribute("href") || "";
+          if (/^(https?:\/\/|mailto:|tel:)/i.test(href)) {
+            bookmarks.push({ title: link.textContent || href, url: href, category });
+          }
+        }
+      } else if (child.tagName === "DL") {
+        visit(child, category);
+      }
+      child = child.nextElementSibling;
+    }
+  };
+  visit(root);
+  return bookmarks;
 }
 
 async function completeSetup() {
@@ -915,6 +1097,75 @@ function showToast(message) {
   window.setTimeout(() => elements.toast.classList.remove("show"), 1600);
 }
 
+function openCommandPalette() {
+  elements.commandInput.value = state.query || "";
+  renderCommandResults();
+  elements.commandDialog.showModal();
+  window.requestAnimationFrame(() => elements.commandInput.focus());
+}
+
+function renderCommandResults() {
+  const query = elements.commandInput.value.trim();
+  const results = getCommandResults(query);
+  if (!results.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-note";
+    empty.textContent = query ? "Keine Treffer" : "Tippe, um Links zu suchen";
+    elements.commandResults.replaceChildren(empty);
+    return;
+  }
+  elements.commandResults.replaceChildren(...results.map((result, index) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "command-result";
+    row.dataset.index = String(index);
+    const title = document.createElement("strong");
+    title.textContent = result.title;
+    const meta = document.createElement("span");
+    meta.textContent = result.meta;
+    row.append(title, meta);
+    row.addEventListener("click", () => activateCommandResult(result));
+    return row;
+  }));
+}
+
+function getCommandResults(query) {
+  const normalized = query.toLowerCase();
+  const matches = state.links
+    .filter((link) => {
+      const haystack = `${link.title} ${link.category} ${link.note}`.toLowerCase();
+      return !normalized || haystack.includes(normalized);
+    })
+    .slice()
+    .sort((a, b) => compareNames(a.title, b.title))
+    .slice(0, 8)
+    .map((link) => ({ type: "link", title: link.title, meta: link.category || "Link", url: link.url }));
+  if (!normalized) return matches;
+  const categories = getCategoryNames()
+    .filter((category) => category.toLowerCase().includes(normalized))
+    .slice(0, 4)
+    .map((category) => ({ type: "category", title: category, meta: "Kategorie" }));
+  const notes = getNotes()
+    .filter((note) => note.text.toLowerCase().includes(normalized))
+    .slice(0, 3)
+    .map((note) => ({ type: "note", title: note.text.slice(0, 70), meta: "Notiz" }));
+  return [...matches, ...categories, ...notes].slice(0, 10);
+}
+
+function activateCommandResult(result) {
+  if (result.type === "link" && result.url) {
+    const target = state.preferences?.openLinksInNewTab === false ? "_self" : "_blank";
+    window.open(result.url, target, target === "_blank" ? "noopener,noreferrer" : undefined);
+  } else {
+    state.query = result.title;
+    elements.search.value = result.title;
+    state.searchOpen = true;
+    renderSearch();
+    renderGroups();
+  }
+  elements.commandDialog.close();
+}
+
 elements.search.addEventListener("input", (event) => {
   state.query = event.target.value;
   renderGroups();
@@ -938,8 +1189,16 @@ elements.settingsCategoriesButton.addEventListener("click", () => {
 });
 elements.settingsImportButton.addEventListener("click", () => {
   elements.settingsDialog.close();
-  if (canEdit()) elements.importDialog.showModal();
-  else openAdminDialog();
+  openImportDialog("json");
+});
+elements.settingsBookmarkImportButton.addEventListener("click", () => {
+  elements.settingsDialog.close();
+  openImportDialog("bookmarks");
+});
+elements.settingsBackupButton.addEventListener("click", downloadBackup);
+elements.settingsRestoreButton.addEventListener("click", () => {
+  elements.settingsDialog.close();
+  openImportDialog("restore");
 });
 elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch((error) => showToast(error.message)));
 elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error) => showToast(error.message)));
@@ -948,6 +1207,7 @@ elements.deleteButton.addEventListener("click", () => deleteLink().catch((error)
 elements.testLinkButton.addEventListener("click", () => testLink().catch((error) => setLinkStatus("bad", error.message)));
 elements.linkStatusEnabled.addEventListener("change", renderLinkStatusFields);
 elements.linkStatusType.addEventListener("change", renderLinkStatusFields);
+elements.toggleSecretFieldsButton.addEventListener("click", toggleSecretFields);
 elements.saveSettingsButton.addEventListener("click", () => saveSettings().catch((error) => showToast(error.message)));
 elements.addCategoryButton.addEventListener("click", addCategory);
 elements.saveCategoriesButton.addEventListener("click", () => saveCategories().catch((error) => showToast(error.message)));
@@ -972,6 +1232,28 @@ elements.addNoteButton.addEventListener("click", async () => {
 elements.runImportButton.addEventListener("click", () => runImport().catch((error) => showToast(error.message)));
 elements.completeSetupButton.addEventListener("click", () => completeSetup().catch((error) => showToast(error.message)));
 elements.adminSubmitButton.addEventListener("click", () => submitAdmin().catch((error) => showToast(error.message)));
+elements.commandInput.addEventListener("input", renderCommandResults);
+elements.commandForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const first = getCommandResults(elements.commandInput.value.trim())[0];
+  if (first) activateCommandResult(first);
+});
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+  const openDialog = document.querySelector("dialog[open]");
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    if (!openDialog || openDialog === elements.commandDialog) openCommandPalette();
+    return;
+  }
+  if (event.key === "/" && !isTyping && !openDialog) {
+    event.preventDefault();
+    state.searchOpen = true;
+    renderSearch();
+    elements.search.focus();
+  }
+});
 
 updateClock();
 window.setInterval(updateClock, 1000);

@@ -390,6 +390,10 @@ body[data-theme="time-circuit"] #timeLabel {
   min-width: 124px;
 }
 
+body.is-locked.is-startpage-mode .admin-only {
+  display: none !important;
+}
+
 .compact-field,
 .search {
   display: grid;
@@ -947,6 +951,12 @@ body[data-theme="time-circuit"] .link-title {
   border-radius: 8px;
   padding: 8px 9px;
   background: color-mix(in srgb, var(--service-glow, var(--accent)), transparent 91%);
+  cursor: pointer;
+}
+
+.link-status-panel:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .link-status-line {
@@ -1187,12 +1197,54 @@ dialog::backdrop {
 }
 
 .settings-actions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .settings-actions button,
 .settings-actions .button {
   width: 100%;
+}
+
+.subtle-button {
+  min-height: 36px;
+  justify-self: start;
+  color: var(--muted);
+}
+
+.command-dialog {
+  gap: 12px;
+}
+
+.command-results {
+  display: grid;
+  gap: 7px;
+  max-height: min(58vh, 460px);
+  overflow: auto;
+}
+
+.command-result {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  min-height: 52px;
+  border-radius: 8px;
+  padding: 9px 11px;
+  text-align: left;
+}
+
+.command-result strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.command-result span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.status-detail-body .service-card {
+  margin: 0;
 }
 
 .dialog-card .toggle-row {
