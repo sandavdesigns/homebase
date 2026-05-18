@@ -7,11 +7,13 @@ const state = {
   profiles: [],
   categories: [],
   links: [],
-  widgets: { clock: true, notes: [], statusOverview: false, linkStats: false },
+  widgets: { clock: true, notes: [], statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
   preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
+  weather: { enabled: false },
   statusLoading: false,
+  weatherLoading: false,
   query: "",
   searchOpen: false
 };
@@ -36,6 +38,10 @@ const elements = {
   deleteProfileButton: document.querySelector("#deleteProfileButton"),
   themeSelect: document.querySelector("#themeSelect"),
   widgets: document.querySelector("#widgets"),
+  weatherWidget: document.querySelector("#weatherWidget"),
+  weatherLabel: document.querySelector("#weatherLabel"),
+  weatherBody: document.querySelector("#weatherBody"),
+  refreshWeatherButton: document.querySelector("#refreshWeatherButton"),
   statusWidget: document.querySelector("#statusWidget"),
   statusList: document.querySelector("#statusList"),
   statusUpdated: document.querySelector("#statusUpdated"),
@@ -94,6 +100,11 @@ const elements = {
   settingShareMode: document.querySelector("#settingShareMode"),
   settingShowStatsWidget: document.querySelector("#settingShowStatsWidget"),
   settingShowStatusWidget: document.querySelector("#settingShowStatusWidget"),
+  settingShowWeatherWidget: document.querySelector("#settingShowWeatherWidget"),
+  weatherSettings: document.querySelector("#weatherSettings"),
+  settingWeatherLabel: document.querySelector("#settingWeatherLabel"),
+  settingWeatherLatitude: document.querySelector("#settingWeatherLatitude"),
+  settingWeatherLongitude: document.querySelector("#settingWeatherLongitude"),
   settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
   createDemoButton: document.querySelector("#createDemoButton"),
   settingsBookmarkImportButton: document.querySelector("#settingsBookmarkImportButton"),
@@ -171,6 +182,7 @@ async function loadData() {
   render();
   if (!state.setupComplete) elements.setupDialog.showModal();
   loadStatus().catch(() => {});
+  loadWeather().catch(() => {});
 }
 
 function syncActiveProfileAliases() {
@@ -224,6 +236,24 @@ async function loadStatus() {
     renderStatus();
     renderStatsWidget();
     renderGroups();
+  }
+}
+
+async function loadWeather() {
+  if (state.widgets?.weather?.enabled !== true) {
+    state.weather = { enabled: false };
+    renderWeather();
+    return;
+  }
+  state.weatherLoading = true;
+  renderWeather();
+  try {
+    const response = await fetch("/api/weather");
+    if (!response.ok) throw new Error("Wetter konnte nicht geladen werden");
+    state.weather = await response.json();
+  } finally {
+    state.weatherLoading = false;
+    renderWeather();
   }
 }
 
@@ -281,14 +311,64 @@ function renderProfiles() {
 
 function renderWidgets() {
   const notes = getNotes();
+  renderWeather();
   renderStatus();
   renderStatsWidget();
   const notesHidden = state.preferences?.showNotes === false || (!notes.length && !state.noteComposerOpen);
   elements.notesWidget.hidden = notesHidden;
-  elements.widgets.hidden = notesHidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
+  elements.widgets.hidden = notesHidden && elements.weatherWidget.hidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
   elements.notesList.replaceChildren(...notes.map(createNoteCard));
+}
+
+function renderWeather() {
+  const enabled = state.widgets?.weather?.enabled === true;
+  elements.weatherWidget.hidden = !enabled;
+  if (!enabled) return;
+  elements.refreshWeatherButton.disabled = state.weatherLoading;
+  elements.refreshWeatherButton.textContent = state.weatherLoading ? "Lädt..." : "Aktualisieren";
+  elements.weatherLabel.textContent = state.widgets.weather.label || "Wetter";
+  const weather = state.weather || {};
+  if (state.weatherLoading && !weather.ok) {
+    elements.weatherBody.replaceChildren(createWeatherMessage("Wetter wird geladen"));
+    return;
+  }
+  if (!weather.ok) {
+    elements.weatherBody.replaceChildren(createWeatherMessage(weather.message || "Noch keine Wetterdaten"));
+    return;
+  }
+
+  const temp = document.createElement("strong");
+  temp.className = "weather-temp";
+  temp.textContent = `${weather.temperature ?? "-"}°`;
+  const condition = document.createElement("p");
+  condition.className = "weather-condition";
+  condition.textContent = weather.condition || "Wetter";
+  const metrics = document.createElement("div");
+  metrics.className = "weather-metrics";
+  const values = [
+    ["Hoch/Tief", weather.high !== null && weather.low !== null ? `${weather.high}°/${weather.low}°` : "-"],
+    ["Regen", weather.rainChance !== null ? `${weather.rainChance}%` : "-"],
+    ["Feuchte", weather.humidity !== null ? `${weather.humidity}%` : "-"]
+  ];
+  metrics.replaceChildren(...values.map(([label, value]) => {
+    const item = document.createElement("span");
+    const small = document.createElement("small");
+    small.textContent = label;
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    item.append(small, strong);
+    return item;
+  }));
+  elements.weatherBody.replaceChildren(temp, condition, metrics);
+}
+
+function createWeatherMessage(message) {
+  const item = document.createElement("p");
+  item.className = "empty-note";
+  item.textContent = message;
+  return item;
 }
 
 function renderStatus() {
@@ -790,7 +870,16 @@ function openSettingsDialog() {
   elements.settingShareMode.checked = state.preferences?.shareMode === true;
   elements.settingShowStatsWidget.checked = state.widgets?.linkStats === true;
   elements.settingShowStatusWidget.checked = state.widgets?.statusOverview === true;
+  elements.settingShowWeatherWidget.checked = state.widgets?.weather?.enabled === true;
+  elements.settingWeatherLabel.value = state.widgets?.weather?.label || "Zuhause";
+  elements.settingWeatherLatitude.value = state.widgets?.weather?.latitude || "";
+  elements.settingWeatherLongitude.value = state.widgets?.weather?.longitude || "";
+  renderWeatherSettings();
   elements.settingsDialog.showModal();
+}
+
+function renderWeatherSettings() {
+  elements.weatherSettings.hidden = !elements.settingShowWeatherWidget.checked;
 }
 
 function openNoteComposer() {
@@ -970,10 +1059,18 @@ async function saveSettings() {
   state.widgets = {
     ...(state.widgets || {}),
     linkStats: elements.settingShowStatsWidget.checked,
-    statusOverview: elements.settingShowStatusWidget.checked
+    statusOverview: elements.settingShowStatusWidget.checked,
+    weather: {
+      ...(state.widgets?.weather || {}),
+      enabled: elements.settingShowWeatherWidget.checked,
+      label: elements.settingWeatherLabel.value.trim() || "Zuhause",
+      latitude: elements.settingWeatherLatitude.value.trim(),
+      longitude: elements.settingWeatherLongitude.value.trim()
+    }
   };
   await saveData("Einstellungen gespeichert");
   elements.settingsDialog.close();
+  loadWeather().catch(() => {});
 }
 
 function openProfileDialog() {
@@ -1342,12 +1439,14 @@ elements.settingsBookmarkImportButton.addEventListener("click", () => {
   openImportDialog("bookmarks");
 });
 elements.createDemoButton.addEventListener("click", () => createDemoProfile().catch((error) => showToast(error.message)));
+elements.settingShowWeatherWidget.addEventListener("change", renderWeatherSettings);
 elements.settingsBackupButton.addEventListener("click", downloadBackup);
 elements.settingsRestoreButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openImportDialog("restore");
 });
 elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch((error) => showToast(error.message)));
+elements.refreshWeatherButton.addEventListener("click", () => loadWeather().catch((error) => showToast(error.message)));
 elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error) => showToast(error.message)));
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
 elements.deleteButton.addEventListener("click", () => deleteLink().catch((error) => showToast(error.message)));
@@ -1405,4 +1504,5 @@ document.addEventListener("keydown", (event) => {
 updateClock();
 window.setInterval(updateClock, 1000);
 window.setInterval(() => loadStatus().catch(() => {}), 60000);
+window.setInterval(() => loadWeather().catch(() => {}), 15 * 60 * 1000);
 loadData().catch((error) => showToast(error.message));

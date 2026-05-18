@@ -14,7 +14,7 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 - Optionale Link-Statusanzeigen fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
 - Themes: Retro, Time Circuit, Dark, Light und Terminal
 - Startseiten- und Freigabe-Modus fuer normale Read-only Nutzung
-- Widget-Galerie fuer Notizen, Statusuebersicht und Linkstatistik
+- Widget-Galerie fuer Wetter, Notizen, Statusuebersicht und Linkstatistik
 
 ## Erster Start
 
@@ -227,6 +227,7 @@ Diese Version enthaelt diese Widgets:
 
 - Datum
 - Uhrzeit
+- Wetter per Open-Meteo ohne API-Key
 - Mehrere Notizen
 - Optionale Linkstatistik
 - Optionale Statusuebersicht
@@ -240,11 +241,14 @@ Im Browser-Menue `Einstellungen` kannst du Titel und Untertitel pflegen und Anze
 - Freigabe-Modus aktivieren
 - Uebersicht-Widget anzeigen
 - Status-Widget anzeigen
+- Wetter-Widget anzeigen
 - Status an Linkkarten anzeigen
 - Notizenbereich anzeigen
 - Links in neuem Tab oeffnen
 
 Kategorien koennen im Kategorien-Dialog neben dem Namen auch ein Icon und eine Farbe bekommen. Die Startseite nutzt diese Farbe dezent fuer Gruppentitel und Linkkarten.
+
+Das Wetter-Widget nutzt Open-Meteo. Dafuer brauchst du nur einen Anzeigenamen sowie Breiten- und Laengengrad des Standorts.
 
 ## Status Widgets
 

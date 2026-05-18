@@ -37,6 +37,13 @@
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
+        <article class="widget weather-widget" id="weatherWidget" hidden>
+          <header class="widget-header">
+            <p id="weatherLabel">Wetter</p>
+            <button id="refreshWeatherButton" type="button">Aktualisieren</button>
+          </header>
+          <div id="weatherBody" class="weather-body"></div>
+        </article>
         <article class="widget status-widget" id="statusWidget" hidden>
           <header class="widget-header">
             <p>Systemstatus</p>
@@ -245,6 +252,24 @@
             <input id="settingShowStatusWidget" type="checkbox" />
             <span>Status-Widget anzeigen</span>
           </label>
+          <label class="toggle-row">
+            <input id="settingShowWeatherWidget" type="checkbox" />
+            <span>Wetter-Widget anzeigen</span>
+          </label>
+          <div class="weather-settings" id="weatherSettings">
+            <label>
+              Wetter-Ort
+              <input id="settingWeatherLabel" maxlength="40" placeholder="Zuhause" />
+            </label>
+            <label>
+              Breitengrad
+              <input id="settingWeatherLatitude" inputmode="decimal" placeholder="52.5200" />
+            </label>
+            <label>
+              Längengrad
+              <input id="settingWeatherLongitude" inputmode="decimal" placeholder="13.4050" />
+            </label>
+          </div>
         </div>
         <div class="settings-actions" aria-label="Verwaltung">
           <button id="newProfileButton" type="button">+ Profil</button>

@@ -487,6 +487,57 @@ textarea:focus {
   min-height: 0;
 }
 
+.weather-widget {
+  min-height: 128px;
+}
+
+.weather-body {
+  display: grid;
+  gap: 8px;
+}
+
+.weather-temp {
+  color: var(--accent-2);
+  font-size: 2.5rem;
+  line-height: 0.95;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--accent-2), transparent 74%);
+}
+
+.weather-condition {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.weather-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.weather-metrics span {
+  display: grid;
+  gap: 2px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.weather-metrics small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.weather-metrics strong {
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
 .mini-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1317,6 +1368,14 @@ dialog::backdrop {
   width: 100%;
 }
 
+.weather-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 0.8fr));
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
 .subtle-button {
   min-height: 36px;
   justify-self: start;
@@ -1495,7 +1554,8 @@ dialog::backdrop {
   }
 
   .widgets,
-  .link-test-row {
+  .link-test-row,
+  .weather-settings {
     grid-template-columns: 1fr;
   }
 
