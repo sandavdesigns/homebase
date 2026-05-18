@@ -1046,16 +1046,16 @@ async function lookupLinkMetadata() {
   setLinkStatus("checking", "Hole Titel...");
   const response = await fetch(`/api/link-metadata?url=${encodeURIComponent(url)}`, { signal: linkMetadataAbort.signal });
   const metadata = await response.json();
-  if (!metadata.ok) {
-    setLinkStatus("bad", metadata.message || "Keine Seitendaten");
-    return;
-  }
   if (metadata.title && (elements.linkTitle.dataset.autoTitle === "true" || !elements.linkTitle.value.trim())) {
     elements.linkTitle.value = metadata.title;
     elements.linkTitle.dataset.autoTitle = "true";
   }
   if (metadata.suggestedCategory && elements.linkCategory.dataset.autoCategory === "true") {
     elements.linkCategory.value = metadata.suggestedCategory;
+  }
+  if (!metadata.title) {
+    setLinkStatus("bad", metadata.message || "Titel nicht gefunden");
+    return;
   }
   setLinkStatus(metadata.message ? "idle" : "good", metadata.suggestedCategory ? `Vorschlag: ${metadata.suggestedCategory}` : "Titel gefunden");
 }

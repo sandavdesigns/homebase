@@ -483,29 +483,32 @@ async function readLinkMetadata(targetUrl) {
   if (!parsed) return { ok: false, message: "Ungueltige URL" };
 
   try {
-    const response = await requestBuffer(parsed.href, { accept: "text/html,*/*", limit: 350_000 });
-    const html = response.buffer.toString("utf8");
-    const title = extractPageTitle(html) || hostLabel(parsed);
+    const html = await requestText(parsed.href, { accept: "text/html,*/*", limit: 1_500_000 });
+    const title = extractPageTitle(html);
     const category = suggestCategoryForLink({ title, url: parsed.href });
     return {
-      ok: true,
+      ok: Boolean(title),
       url: parsed.href,
       title: title.slice(0, 80),
-      suggestedCategory: category
+      suggestedCategory: category,
+      message: title ? "" : "Seitentitel nicht gefunden"
     };
   } catch (error) {
     return {
-      ok: true,
+      ok: false,
       url: parsed.href,
-      title: hostLabel(parsed),
-      suggestedCategory: suggestCategoryForLink({ title: hostLabel(parsed), url: parsed.href }),
+      title: "",
+      suggestedCategory: suggestCategoryForLink({ title: "", url: parsed.href }),
       message: error.message
     };
   }
 }
 
 function extractPageTitle(html) {
-  const ogTitle = getMetaContent(html, "property", "og:title") || getMetaContent(html, "name", "twitter:title");
+  const ogTitle = getMetaContent(html, "property", "og:title")
+    || getMetaContent(html, "name", "og:title")
+    || getMetaContent(html, "property", "twitter:title")
+    || getMetaContent(html, "name", "twitter:title");
   const title = ogTitle || html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "";
   return decodeHtmlText(title).replace(/\s+/g, " ").trim();
 }
@@ -1514,6 +1517,63 @@ function requestBuffer(targetUrl, { accept, limit, headers = {} }) {
     );
     request.on("timeout", () => request.destroy(new Error("Request timeout")));
     request.on("error", reject);
+    request.end();
+  });
+}
+
+function requestText(targetUrl, { accept, limit, headers = {} }) {
+  return new Promise((resolve, reject) => {
+    const parsed = parseHttpUrl(targetUrl);
+    if (!parsed) {
+      reject(new Error("Invalid URL"));
+      return;
+    }
+
+    const transport = parsed.protocol === "https:" ? https : http;
+    const request = transport.request(
+      parsed,
+      {
+        headers: { Accept: accept, "User-Agent": "Homebase/1.0", ...headers },
+        rejectUnauthorized: false,
+        timeout: 5000
+      },
+      (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          response.resume();
+          requestText(new URL(response.headers.location, parsed.href).href, { accept, headers, limit }).then(resolve, reject);
+          return;
+        }
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          response.resume();
+          reject(new Error(`HTTP ${response.statusCode}`));
+          return;
+        }
+
+        const chunks = [];
+        let size = 0;
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          resolve(Buffer.concat(chunks).toString("utf8"));
+        };
+        response.on("data", (chunk) => {
+          size += chunk.length;
+          chunks.push(chunk);
+          const text = Buffer.concat(chunks).toString("utf8");
+          if (size >= limit || /<\/head>/i.test(text) || /<\/title>/i.test(text)) {
+            response.destroy();
+            finish();
+          }
+        });
+        response.on("end", finish);
+      }
+    );
+    request.on("timeout", () => request.destroy(new Error("Request timeout")));
+    request.on("error", (error) => {
+      if (error.code === "ECONNRESET") return;
+      reject(error);
+    });
     request.end();
   });
 }
