@@ -243,7 +243,7 @@ button:disabled,
 }
 
 .shell {
-  width: min(1880px, calc(100% - clamp(32px, 6vw, 128px)));
+  width: min(2160px, calc(100% - clamp(32px, 6vw, 128px)));
   margin: 0 auto;
   padding: 20px 0 44px;
   position: relative;
@@ -927,6 +927,12 @@ textarea:focus {
   display: block;
   column-width: 300px;
   column-gap: 14px;
+}
+
+@media (min-width: 1900px) {
+  .groups.is-compact {
+    column-width: 270px;
+  }
 }
 
 .groups.is-compact .group {
