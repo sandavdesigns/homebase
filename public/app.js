@@ -316,7 +316,7 @@ function renderWidgets() {
   renderStatsWidget();
   const notesHidden = state.preferences?.showNotes === false || (!notes.length && !state.noteComposerOpen);
   elements.notesWidget.hidden = notesHidden;
-  elements.widgets.hidden = notesHidden && elements.weatherWidget.hidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
+  elements.widgets.hidden = notesHidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
   elements.notesList.replaceChildren(...notes.map(createNoteCard));
@@ -327,7 +327,7 @@ function renderWeather() {
   elements.weatherWidget.hidden = !enabled;
   if (!enabled) return;
   elements.refreshWeatherButton.disabled = state.weatherLoading;
-  elements.refreshWeatherButton.textContent = state.weatherLoading ? "Lädt..." : "Aktualisieren";
+  elements.refreshWeatherButton.textContent = state.weatherLoading ? "..." : "↻";
   elements.weatherLabel.textContent = state.widgets.weather.label || "Wetter";
   const weather = state.weather || {};
   if (state.weatherLoading && !weather.ok) {
@@ -361,7 +361,10 @@ function renderWeather() {
     item.append(small, strong);
     return item;
   }));
-  elements.weatherBody.replaceChildren(temp, condition, metrics);
+  const summary = document.createElement("div");
+  summary.className = "weather-summary";
+  summary.append(temp, condition);
+  elements.weatherBody.replaceChildren(summary, metrics);
 }
 
 function createWeatherMessage(message) {

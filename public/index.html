@@ -14,9 +14,18 @@
           <h1 id="pageTitle">Homebase</h1>
           <p id="pageSubtitle"></p>
         </div>
-        <div class="clock" aria-live="polite">
-          <span class="clock-date" id="dateLabel">Heute</span>
-          <span id="timeLabel">--:--</span>
+        <div class="topbar-cards">
+          <article class="weather-widget" id="weatherWidget" hidden>
+            <header class="weather-header">
+              <span id="weatherLabel">Wetter</span>
+              <button id="refreshWeatherButton" type="button" aria-label="Wetter aktualisieren">↻</button>
+            </header>
+            <div id="weatherBody" class="weather-body"></div>
+          </article>
+          <div class="clock" aria-live="polite">
+            <span class="clock-date" id="dateLabel">Heute</span>
+            <span id="timeLabel">--:--</span>
+          </div>
         </div>
       </section>
 
@@ -37,13 +46,6 @@
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
-        <article class="widget weather-widget" id="weatherWidget" hidden>
-          <header class="widget-header">
-            <p id="weatherLabel">Wetter</p>
-            <button id="refreshWeatherButton" type="button">Aktualisieren</button>
-          </header>
-          <div id="weatherBody" class="weather-body"></div>
-        </article>
         <article class="widget status-widget" id="statusWidget" hidden>
           <header class="widget-header">
             <p>Systemstatus</p>
