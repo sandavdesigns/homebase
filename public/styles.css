@@ -925,7 +925,7 @@ textarea:focus {
 
 .groups.is-compact {
   display: block;
-  column-count: 4;
+  column-width: 300px;
   column-gap: 14px;
 }
 
@@ -950,24 +950,6 @@ textarea:focus {
     0 0 28px color-mix(in srgb, var(--accent), transparent 94%);
   backdrop-filter: blur(12px);
   overflow: hidden;
-}
-
-@media (min-width: 1350px) {
-  .groups.is-compact {
-    column-count: 5;
-  }
-}
-
-@media (min-width: 1550px) {
-  .groups.is-compact {
-    column-count: 6;
-  }
-}
-
-@media (min-width: 1850px) {
-  .groups.is-compact {
-    column-count: 7;
-  }
 }
 
 .group::before {
