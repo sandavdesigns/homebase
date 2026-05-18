@@ -266,7 +266,7 @@ button:disabled,
   display: flex;
   align-items: stretch;
   justify-content: end;
-  gap: 8px;
+  gap: 10px;
 }
 
 h1 {
@@ -500,11 +500,11 @@ textarea:focus {
   display: grid;
   align-content: center;
   gap: 4px;
-  width: 196px;
+  width: 236px;
   min-height: 60px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 8px 11px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 48%),
     radial-gradient(circle at 0 0, color-mix(in srgb, var(--accent), transparent 78%), transparent 58%),
@@ -562,8 +562,8 @@ textarea:focus {
 
 .weather-body {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+  gap: 10px;
   align-items: end;
 }
 
@@ -585,7 +585,7 @@ textarea:focus {
   overflow: hidden;
   margin: 0;
   color: var(--text);
-  max-width: 62px;
+  max-width: 86px;
   font-size: 0.62rem;
   font-weight: 850;
   text-overflow: ellipsis;
@@ -596,16 +596,16 @@ textarea:focus {
 .weather-metrics {
   display: flex;
   justify-content: end;
-  gap: 3px;
+  gap: 5px;
   min-width: 0;
 }
 
 .weather-metrics span {
   display: grid;
   gap: 1px;
-  min-width: 34px;
+  min-width: 42px;
   border-radius: 7px;
-  padding: 3px 5px;
+  padding: 3px 6px;
   background: rgba(0, 0, 0, 0.16);
 }
 
@@ -619,7 +619,7 @@ textarea:focus {
 
 .weather-metrics strong {
   color: var(--text);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
