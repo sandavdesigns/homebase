@@ -61,6 +61,7 @@ const elements = {
   editorDialog: document.querySelector("#editorDialog"),
   settingsDialog: document.querySelector("#settingsDialog"),
   categoriesDialog: document.querySelector("#categoriesDialog"),
+  categoriesForm: document.querySelector("#categoriesForm"),
   profileDialog: document.querySelector("#profileDialog"),
   importDialog: document.querySelector("#importDialog"),
   adminDialog: document.querySelector("#adminDialog"),
@@ -72,6 +73,8 @@ const elements = {
   linkTitle: document.querySelector("#linkTitle"),
   linkUrl: document.querySelector("#linkUrl"),
   linkCategory: document.querySelector("#linkCategory"),
+  newLinkCategoryLabel: document.querySelector("#newLinkCategoryLabel"),
+  newLinkCategory: document.querySelector("#newLinkCategory"),
   linkNote: document.querySelector("#linkNote"),
   linkStatusEnabled: document.querySelector("#linkStatusEnabled"),
   linkStatusFields: document.querySelector("#linkStatusFields"),
@@ -560,8 +563,24 @@ function renderCategoryList() {
       option.value = category;
       option.textContent = category;
       return option;
-    })
+    }),
+    createOption("__new_category__", "+ Neue Kategorie")
   );
+  renderNewLinkCategory();
+}
+
+function createOption(value, label) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  return option;
+}
+
+function renderNewLinkCategory() {
+  const isNewCategory = elements.linkCategory.value === "__new_category__";
+  elements.newLinkCategoryLabel.hidden = !isNewCategory;
+  elements.newLinkCategory.required = isNewCategory;
+  if (!isNewCategory) elements.newLinkCategory.value = "";
 }
 
 function renderGroups() {
@@ -821,6 +840,7 @@ function openLinkDialog(link = null) {
   elements.linkUrl.value = link?.url || "";
   renderCategoryList();
   elements.linkCategory.value = link?.category || getCategoryNames()[0] || "Links";
+  renderNewLinkCategory();
   elements.linkCategory.dataset.autoCategory = link ? "false" : "true";
   elements.linkNote.value = link?.note || "";
   setLinkStatusWidgetForm(link?.statusWidget);
@@ -920,7 +940,7 @@ function openCategoriesDialog() {
   elements.categoriesDialog.showModal();
 }
 
-function renderCategoryEditor() {
+function renderCategoryEditor(focusId = "") {
   elements.categoryEditor.replaceChildren(
     ...categoryDrafts.sort((a, b) => compareNames(a.name, b.name)).map((category) => {
       const row = document.createElement("div");
@@ -928,9 +948,16 @@ function renderCategoryEditor() {
       const input = document.createElement("input");
       input.value = category.name;
       input.maxLength = 40;
+      input.placeholder = "Neue Kategorie";
       input.ariaLabel = "Kategoriename";
       input.addEventListener("input", (event) => {
         category.name = event.target.value;
+      });
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          saveCategories().catch((error) => showToast(error.message));
+        }
       });
       const iconSelect = document.createElement("select");
       iconSelect.ariaLabel = "Kategorie-Icon";
@@ -960,14 +987,21 @@ function renderCategoryEditor() {
         renderCategoryEditor();
       });
       row.append(input, iconSelect, color, remove);
+      if (category.id === focusId) {
+        window.requestAnimationFrame(() => {
+          input.focus();
+          input.select();
+        });
+      }
       return row;
     })
   );
 }
 
 function addCategory() {
-  categoryDrafts.push({ id: createId(), originalName: "", name: "Neue Kategorie", icon: "folder", color: categoryColors[categoryDrafts.length % categoryColors.length] });
-  renderCategoryEditor();
+  const id = createId();
+  categoryDrafts.push({ id, originalName: "", name: "", icon: "folder", color: categoryColors[categoryDrafts.length % categoryColors.length] });
+  renderCategoryEditor(id);
 }
 
 async function saveCategories() {
@@ -1003,6 +1037,40 @@ async function saveCategories() {
   elements.categoriesDialog.close();
 }
 
+function upsertCategoryFromLink(name) {
+  const categoryName = String(name || "").trim();
+  if (!categoryName) return "Links";
+  const existing = (state.categories || []).find((category) => category.name.toLowerCase() === categoryName.toLowerCase());
+  if (existing) return existing.name;
+  state.categories.push({
+    id: createId(),
+    name: categoryName,
+    icon: "folder",
+    color: categoryColors[state.categories.length % categoryColors.length]
+  });
+  state.categories.sort((a, b) => compareNames(a.name, b.name));
+  return categoryName;
+}
+
+function selectedLinkCategory() {
+  if (elements.linkCategory.value !== "__new_category__") return elements.linkCategory.value.trim() || "Links";
+  return upsertCategoryFromLink(elements.newLinkCategory.value);
+}
+
+function chooseLinkCategory(categoryName) {
+  const name = String(categoryName || "").trim();
+  if (!name) return;
+  const existing = getCategoryNames().find((category) => category.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    elements.linkCategory.value = existing;
+    renderNewLinkCategory();
+    return;
+  }
+  elements.linkCategory.value = "__new_category__";
+  elements.newLinkCategory.value = name;
+  renderNewLinkCategory();
+}
+
 async function saveLink() {
   if (!elements.linkForm.reportValidity()) return;
   const url = normalizeUrl(elements.linkUrl.value);
@@ -1010,7 +1078,7 @@ async function saveLink() {
     id: elements.linkId.value || createId(),
     title: elements.linkTitle.value.trim() || titleFromUrl(url),
     url,
-    category: elements.linkCategory.value.trim() || "Links",
+    category: selectedLinkCategory(),
     note: elements.linkNote.value.trim(),
     statusWidget: {
       enabled: elements.linkStatusEnabled.checked,
@@ -1054,7 +1122,7 @@ async function lookupLinkMetadata() {
     elements.linkTitle.dataset.autoTitle = "true";
   }
   if (metadata.suggestedCategory && elements.linkCategory.dataset.autoCategory === "true") {
-    elements.linkCategory.value = metadata.suggestedCategory;
+    chooseLinkCategory(metadata.suggestedCategory);
   }
   if (!metadata.title) {
     setLinkStatus("bad", metadata.message || "Titel nicht gefunden");
@@ -1509,6 +1577,11 @@ elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch(
 elements.refreshWeatherButton.addEventListener("click", () => loadWeather().catch((error) => showToast(error.message)));
 elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error) => showToast(error.message)));
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
+elements.linkForm.addEventListener("submit", (event) => {
+  if (event.submitter?.value === "cancel") return;
+  event.preventDefault();
+  saveLink().catch((error) => showToast(error.message));
+});
 elements.deleteButton.addEventListener("click", () => deleteLink().catch((error) => showToast(error.message)));
 elements.testLinkButton.addEventListener("click", () => testLink().catch((error) => setLinkStatus("bad", error.message)));
 elements.linkUrl.addEventListener("input", scheduleLinkMetadataLookup);
@@ -1520,6 +1593,8 @@ elements.linkTitle.addEventListener("input", () => {
 });
 elements.linkCategory.addEventListener("change", () => {
   elements.linkCategory.dataset.autoCategory = "false";
+  renderNewLinkCategory();
+  if (elements.linkCategory.value === "__new_category__") elements.newLinkCategory.focus();
 });
 elements.linkStatusEnabled.addEventListener("change", renderLinkStatusFields);
 elements.linkStatusType.addEventListener("change", renderLinkStatusFields);
@@ -1527,6 +1602,11 @@ elements.toggleSecretFieldsButton.addEventListener("click", toggleSecretFields);
 elements.saveSettingsButton.addEventListener("click", () => saveSettings().catch((error) => showToast(error.message)));
 elements.addCategoryButton.addEventListener("click", addCategory);
 elements.saveCategoriesButton.addEventListener("click", () => saveCategories().catch((error) => showToast(error.message)));
+elements.categoriesForm.addEventListener("submit", (event) => {
+  if (event.submitter?.value === "cancel") return;
+  event.preventDefault();
+  saveCategories().catch((error) => showToast(error.message));
+});
 elements.newProfileButton.addEventListener("click", openProfileDialog);
 elements.saveProfileButton.addEventListener("click", () => saveProfile().catch((error) => showToast(error.message)));
 elements.deleteProfileButton.addEventListener("click", () => deleteProfile().catch((error) => showToast(error.message)));
