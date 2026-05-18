@@ -919,6 +919,19 @@ textarea:focus {
   align-items: start;
 }
 
+.groups.is-compact {
+  display: block;
+  column-count: 4;
+  column-gap: 14px;
+}
+
+.groups.is-compact .group {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 14px;
+  break-inside: avoid;
+}
+
 .group {
   position: relative;
   border: 1px solid var(--line);
@@ -1629,6 +1642,10 @@ dialog::backdrop {
     margin-left: 0;
   }
 
+  .groups.is-compact {
+    column-count: 2;
+  }
+
   .widgets {
     grid-template-columns: 1fr;
   }
@@ -1644,6 +1661,10 @@ dialog::backdrop {
   .link-test-row,
   .weather-settings {
     grid-template-columns: 1fr;
+  }
+
+  .groups.is-compact {
+    column-count: 1;
   }
 
   .topbar {

@@ -47,6 +47,7 @@ const defaultData = {
     startpageMode: true,
     shareMode: false,
     showCategoryCounts: false,
+    compactCategoryLayout: false,
     showLinkStatus: true,
     showNotes: true,
     openLinksInNewTab: true
@@ -210,6 +211,7 @@ function normalizePreferences(preferences) {
     startpageMode: preferences?.startpageMode !== false,
     shareMode: preferences?.shareMode === true,
     showCategoryCounts: preferences?.showCategoryCounts === true,
+    compactCategoryLayout: preferences?.compactCategoryLayout === true,
     showLinkStatus: preferences?.showLinkStatus !== false,
     showNotes: preferences?.showNotes !== false,
     openLinksInNewTab: preferences?.openLinksInNewTab !== false

@@ -8,7 +8,7 @@ const state = {
   categories: [],
   links: [],
   widgets: { clock: true, notes: [], statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
-  preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
+  preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, compactCategoryLayout: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
   weather: { enabled: false },
@@ -93,6 +93,7 @@ const elements = {
   settingsTitle: document.querySelector("#settingsTitle"),
   settingsSubtitle: document.querySelector("#settingsSubtitle"),
   settingShowCategoryCounts: document.querySelector("#settingShowCategoryCounts"),
+  settingCompactCategoryLayout: document.querySelector("#settingCompactCategoryLayout"),
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
@@ -565,6 +566,7 @@ function renderCategoryList() {
 
 function renderGroups() {
   const query = state.query.trim().toLowerCase();
+  elements.groups.classList.toggle("is-compact", state.preferences?.compactCategoryLayout === true);
   const links = state.links.filter((link) => {
     const haystack = `${link.title} ${link.category} ${link.note}`.toLowerCase();
     return !query || haystack.includes(query);
@@ -870,6 +872,7 @@ function openSettingsDialog() {
   elements.settingsSubtitle.value = state.subtitle;
   elements.themeSelect.value = state.theme || "retro";
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
+  elements.settingCompactCategoryLayout.checked = state.preferences?.compactCategoryLayout === true;
   elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
   elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
   elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
@@ -1106,6 +1109,7 @@ async function saveSettings() {
   state.preferences = {
     ...(state.preferences || {}),
     showCategoryCounts: elements.settingShowCategoryCounts.checked,
+    compactCategoryLayout: elements.settingCompactCategoryLayout.checked,
     showLinkStatus: elements.settingShowLinkStatus.checked,
     showNotes: elements.settingShowNotes.checked,
     openLinksInNewTab: elements.settingOpenLinksInNewTab.checked,
