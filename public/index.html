@@ -117,12 +117,12 @@
         </header>
         <input type="hidden" id="linkId" />
         <label>
-          Name
-          <input id="linkTitle" required maxlength="80" />
+          URL
+          <input id="linkUrl" required inputmode="url" placeholder="https://..." />
         </label>
         <label>
-          URL
-          <input id="linkUrl" required placeholder="https://..." />
+          Name
+          <input id="linkTitle" maxlength="80" placeholder="Wird aus der Seite geholt" />
         </label>
         <div class="link-test-row">
           <button id="testLinkButton" type="button">Link testen</button>

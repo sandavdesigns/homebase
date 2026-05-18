@@ -478,15 +478,54 @@ async function fetchBestFavicon(pageUrl) {
   throw new Error("No favicon found");
 }
 
+async function readLinkMetadata(targetUrl) {
+  const parsed = parseHttpUrl(normalizeUrl(String(targetUrl || "")));
+  if (!parsed) return { ok: false, message: "Ungueltige URL" };
+
+  try {
+    const response = await requestBuffer(parsed.href, { accept: "text/html,*/*", limit: 350_000 });
+    const html = response.buffer.toString("utf8");
+    const title = extractPageTitle(html) || hostLabel(parsed);
+    const category = suggestCategoryForLink({ title, url: parsed.href });
+    return {
+      ok: true,
+      url: parsed.href,
+      title: title.slice(0, 80),
+      suggestedCategory: category
+    };
+  } catch (error) {
+    return {
+      ok: true,
+      url: parsed.href,
+      title: hostLabel(parsed),
+      suggestedCategory: suggestCategoryForLink({ title: hostLabel(parsed), url: parsed.href }),
+      message: error.message
+    };
+  }
+}
+
+function extractPageTitle(html) {
+  const ogTitle = getMetaContent(html, "property", "og:title") || getMetaContent(html, "name", "twitter:title");
+  const title = ogTitle || html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "";
+  return decodeHtmlText(title).replace(/\s+/g, " ").trim();
+}
+
+function getMetaContent(html, attrName, attrValue) {
+  const metaPattern = /<meta\b[^>]*>/gi;
+  for (const [tag] of html.matchAll(metaPattern)) {
+    const attrs = readHtmlAttrs(tag);
+    if (String(attrs[attrName] || "").toLowerCase() === attrValue.toLowerCase()) {
+      return attrs.content || "";
+    }
+  }
+  return "";
+}
+
 function extractIconUrls(html, pageUrl) {
   const urls = [];
   const linkPattern = /<link\b[^>]*>/gi;
-  const attrPattern = /\s([a-zA-Z:-]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/g;
   for (const [tag] of html.matchAll(linkPattern)) {
-    const attrs = {};
-    for (const match of tag.matchAll(attrPattern)) {
-      attrs[match[1].toLowerCase()] = match[3] || match[4] || match[5] || "";
-    }
+    const attrs = readHtmlAttrs(tag);
     const rel = attrs.rel || "";
     const href = attrs.href || "";
     if (href && /\b(icon|apple-touch-icon)\b/i.test(rel)) {
@@ -494,6 +533,86 @@ function extractIconUrls(html, pageUrl) {
     }
   }
   return urls;
+}
+
+function readHtmlAttrs(tag) {
+  const attrs = {};
+  const attrPattern = /\s([a-zA-Z:-]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/g;
+  for (const match of tag.matchAll(attrPattern)) {
+    attrs[match[1].toLowerCase()] = decodeHtmlText(match[3] || match[4] || match[5] || "");
+  }
+  return attrs;
+}
+
+function decodeHtmlText(value) {
+  return String(value || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([a-f0-9]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)));
+}
+
+function hostLabel(parsed) {
+  return parsed.hostname.replace(/^www\./i, "").split(".")[0] || "Link";
+}
+
+function suggestCategoryForLink({ title, url }) {
+  const data = readData();
+  const activeProfile = data.profiles.find((profile) => profile.id === data.activeProfileId) || data.profiles[0];
+  const categories = activeProfile?.categories || [];
+  const links = activeProfile?.links || [];
+  const parsed = parseHttpUrl(url);
+  const origin = parsed?.origin.toLowerCase() || "";
+  const text = normalizeSuggestText(`${title} ${url}`);
+  const scores = new Map();
+
+  for (const link of links) {
+    if (origin && parseHttpUrl(link.url)?.origin.toLowerCase() === origin) {
+      scores.set(link.category, (scores.get(link.category) || 0) + 12);
+    }
+  }
+
+  for (const category of categories) {
+    const normalizedName = normalizeSuggestText(category.name);
+    if (!normalizedName) continue;
+    if (text.includes(normalizedName)) scores.set(category.name, (scores.get(category.name) || 0) + 8);
+    for (const token of normalizedName.split(" ").filter((token) => token.length >= 4)) {
+      if (text.includes(token)) scores.set(category.name, (scores.get(category.name) || 0) + 2);
+    }
+  }
+
+  const hints = [
+    ["Medien", ["youtube", "netflix", "plex", "photo", "immich", "spotify", "twitch"]],
+    ["Business", ["billbee", "ebay", "etsy", "shop", "kasuwa", "paypal", "stripe"]],
+    ["Netzwerk", ["fritz", "router", "mikrotik", "adguard", "dns", "wifi", "wlan"]],
+    ["Server", ["docker", "proxmox", "nginx", "portainer", "idrac", "unraid", "nas"]],
+    ["Smart Home", ["home assistant", "homematic", "zigbee", "mqtt", "shelly"]],
+    ["Sicherheit", ["vaultwarden", "bitwarden", "password", "backup"]],
+    ["Werkstatt", ["tool", "werkstatt", "svg", "3d", "druck"]]
+  ];
+  const knownNames = new Map(categories.map((category) => [category.name.toLowerCase(), category.name]));
+  for (const [name, keywords] of hints) {
+    const category = knownNames.get(name.toLowerCase());
+    if (!category) continue;
+    if (keywords.some((keyword) => text.includes(keyword))) scores.set(category, (scores.get(category) || 0) + 5);
+  }
+
+  return [...scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+}
+
+function normalizeSuggestText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function parseStatusTargets(raw) {
@@ -1593,6 +1712,11 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         sendJson(res, 200, { ok: false, status: 0, error: error.message });
       }
+      return;
+    }
+
+    if (url.pathname === "/api/link-metadata" && req.method === "GET") {
+      sendJson(res, 200, await readLinkMetadata(url.searchParams.get("url") || ""));
       return;
     }
 

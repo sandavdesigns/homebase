@@ -133,6 +133,8 @@ const elements = {
 };
 
 let categoryDrafts = [];
+let linkMetadataTimer = null;
+let linkMetadataAbort = null;
 
 const categoryIcons = [
   ["folder", "Ordner"],
@@ -813,15 +815,17 @@ function openLinkDialog(link = null) {
   elements.dialogTitle.textContent = link ? "Link bearbeiten" : "Link hinzufügen";
   elements.linkId.value = link?.id || "";
   elements.linkTitle.value = link?.title || "";
+  elements.linkTitle.dataset.autoTitle = link ? "false" : "true";
   elements.linkUrl.value = link?.url || "";
   renderCategoryList();
   elements.linkCategory.value = link?.category || getCategoryNames()[0] || "Links";
+  elements.linkCategory.dataset.autoCategory = link ? "false" : "true";
   elements.linkNote.value = link?.note || "";
   setLinkStatusWidgetForm(link?.statusWidget);
   setLinkStatus("idle", "Nicht getestet");
   elements.deleteButton.hidden = !link;
   elements.editorDialog.showModal();
-  elements.linkTitle.focus();
+  elements.linkUrl.focus();
 }
 
 function setLinkStatusWidgetForm(widget = {}) {
@@ -998,10 +1002,11 @@ async function saveCategories() {
 
 async function saveLink() {
   if (!elements.linkForm.reportValidity()) return;
+  const url = normalizeUrl(elements.linkUrl.value);
   const link = {
     id: elements.linkId.value || createId(),
-    title: elements.linkTitle.value.trim(),
-    url: normalizeUrl(elements.linkUrl.value),
+    title: elements.linkTitle.value.trim() || titleFromUrl(url),
+    url,
     category: elements.linkCategory.value.trim() || "Links",
     note: elements.linkNote.value.trim(),
     statusWidget: {
@@ -1025,6 +1030,36 @@ async function saveLink() {
   loadStatus().catch(() => {});
 }
 
+function scheduleLinkMetadataLookup() {
+  window.clearTimeout(linkMetadataTimer);
+  if (!elements.editorDialog.open || elements.linkId.value) return;
+  linkMetadataTimer = window.setTimeout(() => lookupLinkMetadata().catch((error) => {
+    if (error.name !== "AbortError") setLinkStatus("bad", "Keine Seitendaten");
+  }), 650);
+}
+
+async function lookupLinkMetadata() {
+  const url = normalizeUrl(elements.linkUrl.value || "");
+  if (!url || !parseHttpLink(url)) return;
+  linkMetadataAbort?.abort();
+  linkMetadataAbort = new AbortController();
+  setLinkStatus("checking", "Hole Titel...");
+  const response = await fetch(`/api/link-metadata?url=${encodeURIComponent(url)}`, { signal: linkMetadataAbort.signal });
+  const metadata = await response.json();
+  if (!metadata.ok) {
+    setLinkStatus("bad", metadata.message || "Keine Seitendaten");
+    return;
+  }
+  if (metadata.title && (elements.linkTitle.dataset.autoTitle === "true" || !elements.linkTitle.value.trim())) {
+    elements.linkTitle.value = metadata.title;
+    elements.linkTitle.dataset.autoTitle = "true";
+  }
+  if (metadata.suggestedCategory && elements.linkCategory.dataset.autoCategory === "true") {
+    elements.linkCategory.value = metadata.suggestedCategory;
+  }
+  setLinkStatus(metadata.message ? "idle" : "good", metadata.suggestedCategory ? `Vorschlag: ${metadata.suggestedCategory}` : "Titel gefunden");
+}
+
 async function deleteLink() {
   state.links = state.links.filter((link) => link.id !== elements.linkId.value);
   await saveData("Link gelöscht");
@@ -1043,6 +1078,24 @@ async function testLink() {
 function setLinkStatus(kind, text) {
   elements.linkStatus.className = `status-pill is-${kind}`;
   elements.linkStatus.textContent = text;
+}
+
+function parseHttpLink(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function titleFromUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname.replace(/^www\./i, "").split(".")[0] || "Link";
+  } catch {
+    return "Link";
+  }
 }
 
 async function saveSettings() {
@@ -1454,6 +1507,16 @@ elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error)
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
 elements.deleteButton.addEventListener("click", () => deleteLink().catch((error) => showToast(error.message)));
 elements.testLinkButton.addEventListener("click", () => testLink().catch((error) => setLinkStatus("bad", error.message)));
+elements.linkUrl.addEventListener("input", scheduleLinkMetadataLookup);
+elements.linkUrl.addEventListener("blur", () => lookupLinkMetadata().catch((error) => {
+  if (error.name !== "AbortError") setLinkStatus("bad", "Keine Seitendaten");
+}));
+elements.linkTitle.addEventListener("input", () => {
+  elements.linkTitle.dataset.autoTitle = "false";
+});
+elements.linkCategory.addEventListener("change", () => {
+  elements.linkCategory.dataset.autoCategory = "false";
+});
 elements.linkStatusEnabled.addEventListener("change", renderLinkStatusFields);
 elements.linkStatusType.addEventListener("change", renderLinkStatusFields);
 elements.toggleSecretFieldsButton.addEventListener("click", toggleSecretFields);
