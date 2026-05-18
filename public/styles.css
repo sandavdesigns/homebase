@@ -812,11 +812,11 @@ body[data-theme="time-circuit"] .group h2 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
-  align-items: center;
+  align-items: stretch;
   min-height: 68px;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 11px;
+  padding: 0;
   color: inherit;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.045)),
@@ -899,7 +899,11 @@ body[data-theme="time-circuit"] .link-card:hover {
 }
 
 .link-content {
+  display: grid;
+  align-content: center;
+  min-height: 66px;
   min-width: 0;
+  padding: 11px;
   color: inherit;
   text-decoration: none;
 }
