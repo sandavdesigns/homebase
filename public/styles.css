@@ -243,7 +243,7 @@ button:disabled,
 }
 
 .shell {
-  width: min(1240px, calc(100% - 32px));
+  width: min(1880px, calc(100% - clamp(32px, 6vw, 128px)));
   margin: 0 auto;
   padding: 20px 0 44px;
   position: relative;
@@ -946,6 +946,18 @@ textarea:focus {
     0 0 28px color-mix(in srgb, var(--accent), transparent 94%);
   backdrop-filter: blur(12px);
   overflow: hidden;
+}
+
+@media (min-width: 1500px) {
+  .groups.is-compact {
+    column-count: 5;
+  }
+}
+
+@media (min-width: 1900px) {
+  .groups.is-compact {
+    column-count: 6;
+  }
 }
 
 .group::before {
