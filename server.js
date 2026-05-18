@@ -15,17 +15,17 @@ const STATUS_TARGETS = parseStatusTargets(process.env.HOMEBASE_STATUS_TARGETS ||
 const sessions = new Map();
 
 const defaultCategories = [
-  "Business",
-  "Server",
-  "Netzwerk",
-  "Smart Home",
-  "Sicherheit",
-  "Werkstatt",
-  "Medien"
-].map((name) => ({ id: crypto.randomUUID(), name }));
+  ["Business", "briefcase", "#ffb238"],
+  ["Server", "server", "#35f0ff"],
+  ["Netzwerk", "network", "#56ff8f"],
+  ["Smart Home", "home", "#c471ff"],
+  ["Sicherheit", "shield", "#ff4f7a"],
+  ["Werkstatt", "tool", "#ff6f3c"],
+  ["Medien", "media", "#4aa8ff"]
+].map(([name, icon, color]) => ({ id: crypto.randomUUID(), name, icon, color }));
 
 const defaultData = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   setupComplete: false,
   title: "Homebase",
   subtitle: "Deine Startseite fuer Links, Profile und kleine Widgets",
@@ -33,10 +33,13 @@ const defaultData = {
   activeProfileId: "default",
   widgets: {
     clock: true,
-    notes: []
+    notes: [],
+    statusOverview: false,
+    linkStats: false
   },
   preferences: {
     startpageMode: true,
+    shareMode: false,
     showCategoryCounts: false,
     showLinkStatus: true,
     showNotes: true,
@@ -49,7 +52,7 @@ const defaultData = {
     {
       id: "default",
       name: "Privat",
-      categories: [{ id: crypto.randomUUID(), name: "Links" }],
+      categories: [{ id: crypto.randomUUID(), name: "Links", icon: "star", color: "#35f0ff" }],
       links: []
     }
   ]
@@ -91,7 +94,7 @@ function writeData(data) {
       ...existing.admin,
       ...data.admin
     },
-    schemaVersion: data.schemaVersion || 4
+    schemaVersion: data.schemaVersion || 5
   });
   fs.writeFileSync(DATA_FILE, `${JSON.stringify(safeData, null, 2)}\n`);
   return safeData;
@@ -171,6 +174,8 @@ function normalizeWidgets(widgets) {
 
   return {
     clock: widgets?.clock !== false,
+    statusOverview: widgets?.statusOverview === true,
+    linkStats: widgets?.linkStats === true,
     notes: notes
       .map((note) => ({
         id: String(note.id || crypto.randomUUID()),
@@ -183,6 +188,7 @@ function normalizeWidgets(widgets) {
 function normalizePreferences(preferences) {
   return {
     startpageMode: preferences?.startpageMode !== false,
+    shareMode: preferences?.shareMode === true,
     showCategoryCounts: preferences?.showCategoryCounts === true,
     showLinkStatus: preferences?.showLinkStatus !== false,
     showNotes: preferences?.showNotes !== false,
@@ -215,7 +221,9 @@ function normalizeCategories(categories, links) {
   const normalizedCategories = (Array.isArray(categories) ? categories : [])
     .map((category) => ({
       id: String(category.id || crypto.randomUUID()),
-      name: String(category.name || "").trim().slice(0, 40)
+      name: String(category.name || "").trim().slice(0, 40),
+      icon: normalizeCategoryIcon(category.icon),
+      color: normalizeCategoryColor(category.color)
     }))
     .filter((category) => {
       if (!category.name || seen.has(category.name)) return false;
@@ -225,13 +233,25 @@ function normalizeCategories(categories, links) {
 
   for (const link of links) {
     if (!seen.has(link.category)) {
-      normalizedCategories.push({ id: crypto.randomUUID(), name: link.category });
+      normalizedCategories.push({ id: crypto.randomUUID(), name: link.category, icon: "folder", color: "#35f0ff" });
       seen.add(link.category);
     }
   }
 
   const categoryList = normalizedCategories.length ? normalizedCategories : defaultCategories;
   return categoryList.sort((a, b) => a.name.localeCompare(b.name, "de", { sensitivity: "base" }));
+}
+
+function normalizeCategoryIcon(icon) {
+  const normalized = String(icon || "").toLowerCase();
+  return ["star", "server", "network", "home", "shield", "tool", "media", "briefcase", "game", "link", "folder"].includes(normalized)
+    ? normalized
+    : "folder";
+}
+
+function normalizeCategoryColor(color) {
+  const normalized = String(color || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : "#35f0ff";
 }
 
 function migrateData(data) {
@@ -245,7 +265,7 @@ function migrateData(data) {
     }));
   }
 
-  normalized.schemaVersion = 4;
+  normalized.schemaVersion = 5;
   normalized.subtitle = normalized.subtitle || defaultData.subtitle;
   const activeProfile = normalized.profiles.find((profile) => profile.id === normalized.activeProfileId) || normalized.profiles[0];
   activeProfile.categories = normalizeCategories(originalVersion < 2 ? [] : activeProfile.categories, activeProfile.links);

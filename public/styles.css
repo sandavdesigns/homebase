@@ -394,6 +394,10 @@ body.is-locked.is-startpage-mode .admin-only {
   display: none !important;
 }
 
+body.is-locked.is-share-mode #lockedState {
+  display: none !important;
+}
+
 .compact-field,
 .search {
   display: grid;
@@ -451,7 +455,7 @@ textarea:focus {
 
 .widgets {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
   margin: 0 0 18px;
 }
@@ -481,6 +485,34 @@ textarea:focus {
 
 .status-widget {
   min-height: 0;
+}
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-stats span {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.mini-stats strong {
+  color: var(--accent-2);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.mini-stats small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .widget-header {
@@ -771,7 +803,7 @@ textarea:focus {
   inset: 0;
   opacity: 0.12;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent), transparent 70%), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--category-color, var(--accent)), transparent 70%), transparent);
   transform: translateX(-78%);
   animation: panel-sweep 9s ease-in-out infinite;
 }
@@ -789,12 +821,88 @@ textarea:focus {
 }
 
 .group h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   position: relative;
   margin: 0 0 11px;
-  color: var(--accent);
+  color: var(--category-color, var(--accent));
   font-size: 0.92rem;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.category-icon {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  border: 1px solid color-mix(in srgb, var(--category-color, var(--accent)), white 24%);
+  border-radius: 5px;
+  color: var(--category-color, var(--accent));
+  background: color-mix(in srgb, var(--category-color, var(--accent)), transparent 88%);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--category-color, var(--accent)), transparent 74%);
+}
+
+.category-icon::before,
+.category-icon::after {
+  content: "";
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.category-icon.is-folder::before,
+.category-icon.is-briefcase::before {
+  left: 3px;
+  right: 3px;
+  top: 5px;
+  height: 7px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+
+.category-icon.is-server::before,
+.category-icon.is-network::before {
+  left: 4px;
+  top: 3px;
+  width: 9px;
+  height: 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  box-shadow: 0 6px 0 -1px currentColor;
+}
+
+.category-icon.is-star::before {
+  inset: 4px;
+  background: currentColor;
+  clip-path: polygon(50% 0, 62% 35%, 100% 35%, 68% 56%, 80% 95%, 50% 70%, 20% 95%, 32% 56%, 0 35%, 38% 35%);
+}
+
+.category-icon.is-home::before {
+  left: 4px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.category-icon.is-shield::before {
+  inset: 3px 4px;
+  border: 1px solid currentColor;
+  border-radius: 6px 6px 8px 8px;
+}
+
+.category-icon.is-tool::before,
+.category-icon.is-media::before,
+.category-icon.is-game::before,
+.category-icon.is-link::before {
+  left: 4px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
 }
 
 body[data-theme="time-circuit"] .group h2 {
@@ -814,7 +922,7 @@ body[data-theme="time-circuit"] .group h2 {
   gap: 0;
   align-items: stretch;
   min-height: 68px;
-  border: 1px solid transparent;
+  border: 1px solid color-mix(in srgb, var(--category-color, var(--accent)), transparent 86%);
   border-radius: 8px;
   padding: 0;
   color: inherit;
@@ -883,7 +991,7 @@ body[data-theme="time-circuit"] .link-card:hover {
 
 .link-card:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent), transparent 34%);
+  border-color: color-mix(in srgb, var(--category-color, var(--accent)), transparent 34%);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06)),
     color-mix(in srgb, var(--panel-strong), transparent 26%);
@@ -1316,13 +1424,18 @@ dialog::backdrop {
 
 .category-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(160px, 1fr) minmax(120px, 0.45fr) 46px auto;
   gap: 8px;
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.055);
+}
+
+.category-row input[type="color"] {
+  min-height: 38px;
+  padding: 4px;
 }
 
 .category-row button {

@@ -5,6 +5,7 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 ## Funktionen
 
 - Browserbasierte Pflege von Links, Kategorien, Profilen, Notizen, Titel und Untertitel
+- Kategorie-Icons und Farben fuer bessere Gruppierung
 - Einklappbare Suche ueber Linktitel, Kategorie und Notiz, auch per `Cmd+K`/`Ctrl+K`
 - Automatisch gruppierte Kategorien mit alphabetischer Sortierung
 - JSON-Backup/Restore in der UI
@@ -12,8 +13,8 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 - Automatischer Favicon-Abruf mit lokalem Cache
 - Optionale Link-Statusanzeigen fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
 - Themes: Retro, Time Circuit, Dark, Light und Terminal
-- Startseiten-Modus fuer normale Nutzung und optionaler Admin-Modus fuer Bearbeitung
-- Widgets fuer Uhr und mehrere Notizen
+- Startseiten- und Freigabe-Modus fuer normale Read-only Nutzung
+- Widget-Galerie fuer Notizen, Statusuebersicht und Linkstatistik
 
 ## Erster Start
 
@@ -134,10 +135,13 @@ Profile werden direkt im Browser verwaltet. Jedes Profil hat eigene Kategorien u
 - `+ Profil` erstellt ein neues Profil.
 - `Profil löschen` entfernt das aktive Profil, solange mindestens ein weiteres Profil existiert.
 - Das Profil-Dropdown wechselt zwischen Profilen.
+- `Demo-Profil` in den Einstellungen erstellt ein anonymes Beispielprofil fuer Tests oder Screenshots.
 
 ## Admin-Modus
 
 Homebase startet im Startseiten-Modus: Links und Widgets sind sichtbar, Bearbeitung bleibt verborgen. Wenn ein Admin-Passwort gesetzt ist, sind Bearbeiten, Import, Backup/Restore und Profilverwaltung gesperrt. Ueber `Admin gesperrt` kannst du entsperren. Ueber `Admin offen` sperrst du die Bearbeitung wieder.
+
+Der Freigabe-Modus blendet im gesperrten Zustand den Admin-Hinweis aus. Das ist fuer Familien-, Werkstatt- oder Tablet-Ansichten gedacht, bei denen Homebase wie eine ruhige Startseite wirken soll.
 
 Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt werden oder beim ersten Start im Setup. Das Setup-Passwort wird gehasht in `homebase.json` gespeichert.
 
@@ -224,6 +228,8 @@ Diese Version enthaelt diese Widgets:
 - Datum
 - Uhrzeit
 - Mehrere Notizen
+- Optionale Linkstatistik
+- Optionale Statusuebersicht
 - Link-Statusanzeigen, wenn ein Link ein Status-Widget aktiviert hat
 
 ## Einstellungen
@@ -231,9 +237,14 @@ Diese Version enthaelt diese Widgets:
 Im Browser-Menue `Einstellungen` kannst du Titel und Untertitel pflegen und Anzeigeoptionen umschalten:
 
 - Kategorie-Zahlen anzeigen
+- Freigabe-Modus aktivieren
+- Uebersicht-Widget anzeigen
+- Status-Widget anzeigen
 - Status an Linkkarten anzeigen
 - Notizenbereich anzeigen
 - Links in neuem Tab oeffnen
+
+Kategorien koennen im Kategorien-Dialog neben dem Namen auch ein Icon und eine Farbe bekommen. Die Startseite nutzt diese Farbe dezent fuer Gruppentitel und Linkkarten.
 
 ## Status Widgets
 
@@ -289,7 +300,8 @@ Nach dem Update:
 - `+ Link` legt neue Links an.
 - `...` an einem Link bearbeitet oder loescht ihn.
 - `+ Profil` erstellt ein weiteres Profil.
+- `Demo-Profil` erstellt Testdaten ohne private Links oder Zugangsdaten.
 - `Cmd+K` oder `Ctrl+K` oeffnet die schnelle Suche.
-- `Einstellungen` aendert Titel, Untertitel, Anzeigeoptionen, Kategorien, Import, Backup und Restore.
+- `Einstellungen` aendert Titel, Untertitel, Anzeigeoptionen, Widget-Galerie, Kategorien, Import, Backup und Restore.
 
 Kategorien und Links werden alphabetisch angezeigt. Linkkarten zeigen Titel, Favicon und optionale Notiz; die URL bleibt als Klickziel hinterlegt, wird aber nicht extra angezeigt.

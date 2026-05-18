@@ -7,8 +7,8 @@ const state = {
   profiles: [],
   categories: [],
   links: [],
-  widgets: { clock: true, notes: [] },
-  preferences: { startpageMode: true, showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
+  widgets: { clock: true, notes: [], statusOverview: false, linkStats: false },
+  preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
   statusLoading: false,
@@ -40,6 +40,8 @@ const elements = {
   statusList: document.querySelector("#statusList"),
   statusUpdated: document.querySelector("#statusUpdated"),
   refreshStatusButton: document.querySelector("#refreshStatusButton"),
+  statsWidget: document.querySelector("#statsWidget"),
+  statsList: document.querySelector("#statsList"),
   notesWidget: document.querySelector("#notesWidget"),
   notesList: document.querySelector("#notesList"),
   noteInput: document.querySelector("#noteInput"),
@@ -89,7 +91,11 @@ const elements = {
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
   settingStartpageMode: document.querySelector("#settingStartpageMode"),
+  settingShareMode: document.querySelector("#settingShareMode"),
+  settingShowStatsWidget: document.querySelector("#settingShowStatsWidget"),
+  settingShowStatusWidget: document.querySelector("#settingShowStatusWidget"),
   settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
+  createDemoButton: document.querySelector("#createDemoButton"),
   settingsBookmarkImportButton: document.querySelector("#settingsBookmarkImportButton"),
   settingsImportButton: document.querySelector("#settingsImportButton"),
   settingsBackupButton: document.querySelector("#settingsBackupButton"),
@@ -116,6 +122,22 @@ const elements = {
 };
 
 let categoryDrafts = [];
+
+const categoryIcons = [
+  ["folder", "Ordner"],
+  ["star", "Stern"],
+  ["briefcase", "Business"],
+  ["server", "Server"],
+  ["network", "Netzwerk"],
+  ["home", "Smart Home"],
+  ["shield", "Sicherheit"],
+  ["tool", "Werkstatt"],
+  ["media", "Medien"],
+  ["game", "Game"],
+  ["link", "Link"]
+];
+
+const categoryColors = ["#35f0ff", "#56ff8f", "#ffb238", "#ff4f7a", "#c471ff", "#4aa8ff", "#ff6f3c"];
 
 function activeProfile() {
   return state.profiles.find((profile) => profile.id === state.activeProfileId) || state.profiles[0] || {
@@ -167,7 +189,7 @@ async function saveData(message = "Gespeichert") {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      schemaVersion: state.schemaVersion || 4,
+      schemaVersion: state.schemaVersion || 5,
       setupComplete: state.setupComplete,
       title: state.title,
       subtitle: state.subtitle,
@@ -200,6 +222,7 @@ async function loadStatus() {
   } finally {
     state.statusLoading = false;
     renderStatus();
+    renderStatsWidget();
     renderGroups();
   }
 }
@@ -233,7 +256,8 @@ function renderAdminState() {
   const editable = canEdit();
   document.body.classList.toggle("is-locked", !editable);
   document.body.classList.toggle("is-startpage-mode", state.preferences?.startpageMode !== false);
-  elements.locked.hidden = editable;
+  document.body.classList.toggle("is-share-mode", state.preferences?.shareMode === true);
+  elements.locked.hidden = editable || state.preferences?.shareMode === true;
   elements.adminButton.textContent = state.auth?.enabled ? (editable ? "Admin offen" : "Admin gesperrt") : "Admin aus";
   elements.adminButton.classList.toggle("is-unlocked", editable);
   elements.adminButton.setAttribute("aria-pressed", String(editable));
@@ -258,9 +282,10 @@ function renderProfiles() {
 function renderWidgets() {
   const notes = getNotes();
   renderStatus();
+  renderStatsWidget();
   const notesHidden = state.preferences?.showNotes === false || (!notes.length && !state.noteComposerOpen);
   elements.notesWidget.hidden = notesHidden;
-  elements.widgets.hidden = notesHidden && elements.statusWidget.hidden;
+  elements.widgets.hidden = notesHidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
   elements.notesList.replaceChildren(...notes.map(createNoteCard));
@@ -268,7 +293,7 @@ function renderWidgets() {
 
 function renderStatus() {
   const items = Array.isArray(state.status.items) ? state.status.items : [];
-  elements.statusWidget.hidden = true;
+  elements.statusWidget.hidden = state.widgets?.statusOverview !== true;
   elements.refreshStatusButton.disabled = state.statusLoading;
   elements.refreshStatusButton.textContent = state.statusLoading ? "Lädt..." : "Aktualisieren";
   elements.statusList.replaceChildren(
@@ -277,6 +302,27 @@ function renderStatus() {
   elements.statusUpdated.textContent = state.status.updatedAt
     ? `Stand ${new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(new Date(state.status.updatedAt))}`
     : "";
+}
+
+function renderStatsWidget() {
+  elements.statsWidget.hidden = state.widgets?.linkStats !== true;
+  if (elements.statsWidget.hidden) return;
+  const online = (state.status.items || []).filter((item) => item.status === "online").length;
+  const configured = (state.status.items || []).length;
+  const stats = [
+    { label: "Links", value: state.links.length },
+    { label: "Kategorien", value: getCategoryNames().length },
+    { label: "Status online", value: configured ? `${online}/${configured}` : "0" }
+  ];
+  elements.statsList.replaceChildren(...stats.map((stat) => {
+    const item = document.createElement("span");
+    const value = document.createElement("strong");
+    value.textContent = stat.value;
+    const label = document.createElement("small");
+    label.textContent = stat.label;
+    item.append(value, label);
+    return item;
+  }));
 }
 
 function createStatusCard(item) {
@@ -451,10 +497,17 @@ function renderGroups() {
 
   elements.groups.replaceChildren(
     ...[...grouped.entries()].sort(([a], [b]) => compareNames(a, b)).map(([category, groupLinks]) => {
+      const meta = getCategoryMeta(category);
       const section = document.createElement("article");
       section.className = "group";
+      section.style.setProperty("--category-color", meta.color);
       const heading = document.createElement("h2");
-      heading.textContent = state.preferences?.showCategoryCounts ? `${category} (${groupLinks.length})` : category;
+      const icon = document.createElement("span");
+      icon.className = `category-icon is-${meta.icon}`;
+      icon.ariaHidden = "true";
+      const text = document.createElement("span");
+      text.textContent = state.preferences?.showCategoryCounts ? `${category} (${groupLinks.length})` : category;
+      heading.append(icon, text);
       const list = document.createElement("div");
       list.className = "link-list";
       if (groupLinks.length) {
@@ -495,9 +548,23 @@ function getCategoryNames() {
   return names.sort(compareNames);
 }
 
+function getCategoryMeta(name) {
+  const category = (state.categories || []).find((candidate) => candidate.name === name) || {};
+  return {
+    icon: category.icon || "folder",
+    color: normalizeColor(category.color || "#35f0ff")
+  };
+}
+
+function normalizeColor(color) {
+  const value = String(color || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#35f0ff";
+}
+
 function createLinkCard(link) {
   const wrapper = document.createElement("div");
   wrapper.className = "link-card";
+  wrapper.style.setProperty("--category-color", getCategoryMeta(link.category || "Links").color);
   const status = state.preferences?.showLinkStatus === false ? null : getStatusForLink(link);
   if (status) wrapper.classList.add(`has-status`, `is-${status.status || "offline"}`);
   const anchor = document.createElement("a");
@@ -720,6 +787,9 @@ function openSettingsDialog() {
   elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
   elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
   elements.settingStartpageMode.checked = state.preferences?.startpageMode !== false;
+  elements.settingShareMode.checked = state.preferences?.shareMode === true;
+  elements.settingShowStatsWidget.checked = state.widgets?.linkStats === true;
+  elements.settingShowStatusWidget.checked = state.widgets?.statusOverview === true;
   elements.settingsDialog.showModal();
 }
 
@@ -739,7 +809,13 @@ function openCategoriesDialog() {
   if (!canEdit()) return openAdminDialog();
   categoryDrafts = getCategoryNames().map((name) => {
     const category = state.categories.find((candidate) => candidate.name === name);
-    return { id: category?.id || createId(), originalName: name, name };
+    return {
+      id: category?.id || createId(),
+      originalName: name,
+      name,
+      icon: category?.icon || "folder",
+      color: normalizeColor(category?.color || "#35f0ff")
+    };
   });
   renderCategoryEditor();
   elements.categoriesDialog.showModal();
@@ -757,6 +833,25 @@ function renderCategoryEditor() {
       input.addEventListener("input", (event) => {
         category.name = event.target.value;
       });
+      const iconSelect = document.createElement("select");
+      iconSelect.ariaLabel = "Kategorie-Icon";
+      iconSelect.replaceChildren(...categoryIcons.map(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        return option;
+      }));
+      iconSelect.value = category.icon || "folder";
+      iconSelect.addEventListener("change", (event) => {
+        category.icon = event.target.value;
+      });
+      const color = document.createElement("input");
+      color.type = "color";
+      color.value = normalizeColor(category.color || "#35f0ff");
+      color.ariaLabel = "Kategorie-Farbe";
+      color.addEventListener("input", (event) => {
+        category.color = event.target.value;
+      });
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "danger subtle-danger";
@@ -765,21 +860,27 @@ function renderCategoryEditor() {
         categoryDrafts = categoryDrafts.filter((candidate) => candidate.id !== category.id);
         renderCategoryEditor();
       });
-      row.append(input, remove);
+      row.append(input, iconSelect, color, remove);
       return row;
     })
   );
 }
 
 function addCategory() {
-  categoryDrafts.push({ id: createId(), originalName: "", name: "Neue Kategorie" });
+  categoryDrafts.push({ id: createId(), originalName: "", name: "Neue Kategorie", icon: "folder", color: categoryColors[categoryDrafts.length % categoryColors.length] });
   renderCategoryEditor();
 }
 
 async function saveCategories() {
   const seen = new Set();
   const nextCategories = categoryDrafts
-    .map((category) => ({ id: category.id || createId(), originalName: category.originalName, name: category.name.trim() }))
+    .map((category) => ({
+      id: category.id || createId(),
+      originalName: category.originalName,
+      name: category.name.trim(),
+      icon: category.icon || "folder",
+      color: normalizeColor(category.color)
+    }))
     .filter((category) => {
       if (!category.name || seen.has(category.name)) return false;
       seen.add(category.name);
@@ -796,9 +897,9 @@ async function saveCategories() {
     return link;
   });
   if (state.links.some((link) => link.category === "Links") && !nextNames.has("Links")) {
-    nextCategories.push({ id: createId(), name: "Links" });
+    nextCategories.push({ id: createId(), name: "Links", icon: "link", color: "#35f0ff" });
   }
-  state.categories = nextCategories.map(({ id, name }) => ({ id, name })).sort((a, b) => compareNames(a.name, b.name));
+  state.categories = nextCategories.map(({ id, name, icon, color }) => ({ id, name, icon, color })).sort((a, b) => compareNames(a.name, b.name));
   await saveData("Kategorien gespeichert");
   elements.categoriesDialog.close();
 }
@@ -863,7 +964,13 @@ async function saveSettings() {
     showLinkStatus: elements.settingShowLinkStatus.checked,
     showNotes: elements.settingShowNotes.checked,
     openLinksInNewTab: elements.settingOpenLinksInNewTab.checked,
-    startpageMode: elements.settingStartpageMode.checked
+    startpageMode: elements.settingStartpageMode.checked,
+    shareMode: elements.settingShareMode.checked
+  };
+  state.widgets = {
+    ...(state.widgets || {}),
+    linkStats: elements.settingShowStatsWidget.checked,
+    statusOverview: elements.settingShowStatusWidget.checked
   };
   await saveData("Einstellungen gespeichert");
   elements.settingsDialog.close();
@@ -879,7 +986,7 @@ async function saveProfile() {
   const name = elements.profileName.value.trim();
   if (!name) return;
   const id = createId();
-  state.profiles.push({ id, name, categories: [{ id: createId(), name: "Links" }], links: [] });
+  state.profiles.push({ id, name, categories: [{ id: createId(), name: "Links", icon: "link", color: "#35f0ff" }], links: [] });
   state.activeProfileId = id;
   syncActiveProfileAliases();
   await saveData("Profil erstellt");
@@ -894,6 +1001,45 @@ async function deleteProfile() {
   state.activeProfileId = state.profiles[0].id;
   syncActiveProfileAliases();
   await saveData("Profil gelöscht");
+}
+
+async function createDemoProfile() {
+  if (!canEdit()) return openAdminDialog();
+  const existing = state.profiles.find((profile) => profile.id === "demo");
+  if (existing && !window.confirm("Demo-Profil neu erstellen und vorhandene Demo-Daten ersetzen?")) return;
+  const demoProfile = {
+    id: "demo",
+    name: "Demo",
+    categories: [
+      { id: createId(), name: "Business", icon: "briefcase", color: "#ffb238" },
+      { id: createId(), name: "Gameserver", icon: "game", color: "#56ff8f" },
+      { id: createId(), name: "Netzwerk", icon: "network", color: "#35f0ff" },
+      { id: createId(), name: "Medien", icon: "media", color: "#4aa8ff" }
+    ],
+    links: [
+      createDemoLink("Rechnungstool", "https://example.com/business", "Business", "Demo-Link ohne private Daten"),
+      createDemoLink("AMP Panel", "https://example.com/amp", "Gameserver", "Status-Widget kann hier gepflegt werden"),
+      createDemoLink("Router", "https://example.com/router", "Netzwerk", ""),
+      createDemoLink("Medienserver", "https://example.com/media", "Medien", "")
+    ]
+  };
+  state.profiles = state.profiles.filter((profile) => profile.id !== "demo");
+  state.profiles.push(demoProfile);
+  state.activeProfileId = "demo";
+  syncActiveProfileAliases();
+  await saveData("Demo-Profil erstellt");
+  elements.settingsDialog.close();
+}
+
+function createDemoLink(title, url, category, note) {
+  return {
+    id: createId(),
+    title,
+    url,
+    category,
+    note,
+    statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
+  };
 }
 
 function openImportDialog(mode = "json") {
@@ -990,7 +1136,7 @@ async function importBookmarks(html) {
   if (!nextLinks.length) throw new Error("Keine neuen Bookmarks gefunden");
   state.categories = [...knownCategories].map((name) => {
     const existing = state.categories.find((category) => category.name === name);
-    return existing || { id: createId(), name };
+    return existing || { id: createId(), name, icon: "folder", color: categoryColors[state.categories.length % categoryColors.length] };
   }).sort((a, b) => compareNames(a.name, b.name));
   state.links = [...state.links, ...nextLinks];
   await saveData("Bookmarks importiert");
@@ -1195,6 +1341,7 @@ elements.settingsBookmarkImportButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openImportDialog("bookmarks");
 });
+elements.createDemoButton.addEventListener("click", () => createDemoProfile().catch((error) => showToast(error.message)));
 elements.settingsBackupButton.addEventListener("click", downloadBackup);
 elements.settingsRestoreButton.addEventListener("click", () => {
   elements.settingsDialog.close();

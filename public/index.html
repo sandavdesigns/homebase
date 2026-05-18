@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=linkwidgets1" />
+    <link rel="stylesheet" href="/styles.css?v=product2" />
   </head>
   <body>
     <main class="shell">
@@ -44,6 +44,12 @@
           </header>
           <div id="statusList" class="status-list"></div>
           <p id="statusUpdated" class="status-updated"></p>
+        </article>
+        <article class="widget stats-widget" id="statsWidget" hidden>
+          <header class="widget-header">
+            <p>Übersicht</p>
+          </header>
+          <div id="statsList" class="mini-stats"></div>
         </article>
         <article class="widget notes-widget" id="notesWidget" data-widget="notes">
           <header class="widget-header">
@@ -210,6 +216,10 @@
             <span>Startseiten-Modus</span>
           </label>
           <label class="toggle-row">
+            <input id="settingShareMode" type="checkbox" />
+            <span>Freigabe-Modus</span>
+          </label>
+          <label class="toggle-row">
             <input id="settingShowCategoryCounts" type="checkbox" />
             <span>Kategorie-Zahlen anzeigen</span>
           </label>
@@ -226,9 +236,20 @@
             <span>Links in neuem Tab öffnen</span>
           </label>
         </div>
+        <div class="settings-options" aria-label="Widget-Galerie">
+          <label class="toggle-row">
+            <input id="settingShowStatsWidget" type="checkbox" />
+            <span>Übersicht-Widget anzeigen</span>
+          </label>
+          <label class="toggle-row">
+            <input id="settingShowStatusWidget" type="checkbox" />
+            <span>Status-Widget anzeigen</span>
+          </label>
+        </div>
         <div class="settings-actions" aria-label="Verwaltung">
           <button id="newProfileButton" type="button">+ Profil</button>
           <button id="deleteProfileButton" class="danger subtle-danger" type="button">Profil löschen</button>
+          <button id="createDemoButton" type="button">Demo-Profil</button>
           <button id="settingsCategoriesButton" type="button">Kategorien</button>
           <button id="settingsBookmarkImportButton" type="button">Bookmarks</button>
           <button id="settingsImportButton" type="button">Import</button>
@@ -344,6 +365,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=linkwidgets1"></script>
+    <script src="/app.js?v=product2"></script>
   </body>
 </html>
