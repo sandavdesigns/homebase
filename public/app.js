@@ -139,6 +139,7 @@ const elements = {
 let categoryDrafts = [];
 let linkMetadataTimer = null;
 let linkMetadataAbort = null;
+let compactLayoutTimer = null;
 
 const categoryIcons = [
   ["folder", "Ordner"],
@@ -585,7 +586,8 @@ function renderNewLinkCategory() {
 
 function renderGroups() {
   const query = state.query.trim().toLowerCase();
-  elements.groups.classList.toggle("is-compact", state.preferences?.compactCategoryLayout === true);
+  const compactLayout = state.preferences?.compactCategoryLayout === true;
+  elements.groups.classList.toggle("is-compact", compactLayout);
   const links = state.links.filter((link) => {
     const haystack = `${link.title} ${link.category} ${link.note}`.toLowerCase();
     return !query || haystack.includes(query);
@@ -601,34 +603,58 @@ function renderGroups() {
     }
   }
 
-  elements.groups.replaceChildren(
-    ...[...grouped.entries()].sort(([a], [b]) => compareNames(a, b)).map(([category, groupLinks]) => {
-      const meta = getCategoryMeta(category);
-      const section = document.createElement("article");
-      section.className = "group";
-      section.style.setProperty("--category-color", meta.color);
-      const heading = document.createElement("h2");
-      const icon = document.createElement("span");
-      icon.className = `category-icon is-${meta.icon}`;
-      icon.ariaHidden = "true";
-      const text = document.createElement("span");
-      text.textContent = state.preferences?.showCategoryCounts ? `${category} (${groupLinks.length})` : category;
-      heading.append(icon, text);
-      const list = document.createElement("div");
-      list.className = "link-list";
-      if (groupLinks.length) {
-        list.replaceChildren(...groupLinks.slice().sort((a, b) => compareNames(a.title, b.title)).map(createLinkCard));
-      } else {
-        const empty = document.createElement("p");
-        empty.className = "empty-category";
-        empty.textContent = "Noch leer";
-        list.append(empty);
-      }
-      section.append(heading, list);
-      return section;
-    })
-  );
+  const sections = [...grouped.entries()].sort(([a], [b]) => compareNames(a, b)).map(([category, groupLinks]) => createGroupSection(category, groupLinks));
+  elements.groups.replaceChildren(...(compactLayout ? packCompactGroups(sections) : sections.map(({ section }) => section)));
   elements.empty.hidden = links.length > 0 || !query;
+}
+
+function createGroupSection(category, groupLinks) {
+  const meta = getCategoryMeta(category);
+  const section = document.createElement("article");
+  section.className = "group";
+  section.style.setProperty("--category-color", meta.color);
+  const heading = document.createElement("h2");
+  const icon = document.createElement("span");
+  icon.className = `category-icon is-${meta.icon}`;
+  icon.ariaHidden = "true";
+  const text = document.createElement("span");
+  text.textContent = state.preferences?.showCategoryCounts ? `${category} (${groupLinks.length})` : category;
+  heading.append(icon, text);
+  const list = document.createElement("div");
+  list.className = "link-list";
+  if (groupLinks.length) {
+    list.replaceChildren(...groupLinks.slice().sort((a, b) => compareNames(a.title, b.title)).map(createLinkCard));
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "empty-category";
+    empty.textContent = "Noch leer";
+    list.append(empty);
+  }
+  section.append(heading, list);
+  return {
+    section
+  };
+}
+
+function packCompactGroups(groups) {
+  if (!groups.length) {
+    elements.groups.style.setProperty("--compact-columns", 1);
+    return [];
+  }
+  const width = elements.groups.clientWidth || document.documentElement.clientWidth || window.innerWidth;
+  const targetWidth = width >= 1900 ? 270 : 300;
+  const desiredColumns = Math.max(1, Math.min(groups.length, Math.floor((width + 14) / (targetWidth + 14))));
+  const groupsPerColumn = Math.ceil(groups.length / desiredColumns);
+  const columnCount = Math.ceil(groups.length / groupsPerColumn);
+  elements.groups.style.setProperty("--compact-columns", columnCount);
+  const columns = Array.from({ length: columnCount }, () => document.createElement("div"));
+  columns.forEach((column) => {
+    column.className = "group-column";
+  });
+  groups.forEach((group, index) => {
+    columns[Math.floor(index / groupsPerColumn)].append(group.section);
+  });
+  return columns;
 }
 
 function compareNames(a, b) {
@@ -1649,6 +1675,11 @@ document.addEventListener("keydown", (event) => {
     renderSearch();
     elements.search.focus();
   }
+});
+window.addEventListener("resize", () => {
+  if (state.preferences?.compactCategoryLayout !== true) return;
+  window.clearTimeout(compactLayoutTimer);
+  compactLayoutTimer = window.setTimeout(renderGroups, 120);
 });
 
 updateClock();

@@ -924,22 +924,20 @@ textarea:focus {
 }
 
 .groups.is-compact {
-  display: block;
-  column-width: 300px;
-  column-gap: 14px;
-}
-
-@media (min-width: 1900px) {
-  .groups.is-compact {
-    column-width: 270px;
-  }
+  display: grid;
+  grid-template-columns: repeat(var(--compact-columns, 4), minmax(0, 1fr));
+  gap: 14px;
 }
 
 .groups.is-compact .group {
-  display: inline-block;
   width: 100%;
-  margin: 0 0 14px;
-  break-inside: avoid;
+}
+
+.group-column {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
 }
 
 .group {
@@ -1652,10 +1650,6 @@ dialog::backdrop {
     margin-left: 0;
   }
 
-  .groups.is-compact {
-    column-count: 2;
-  }
-
   .widgets {
     grid-template-columns: 1fr;
   }
@@ -1671,10 +1665,6 @@ dialog::backdrop {
   .link-test-row,
   .weather-settings {
     grid-template-columns: 1fr;
-  }
-
-  .groups.is-compact {
-    column-count: 1;
   }
 
   .topbar {
