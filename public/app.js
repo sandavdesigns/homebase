@@ -1573,7 +1573,13 @@ function googleSearchUrl(query) {
 
 function openGoogleSearch(query) {
   const search = query.trim();
-  if (!search) return;
+  if (!search) {
+    state.searchOpen = true;
+    renderSearch();
+    elements.search.focus();
+    showToast("Suchtext eingeben");
+    return;
+  }
   const target = state.preferences?.openLinksInNewTab === false ? "_self" : "_blank";
   window.open(googleSearchUrl(search), target, target === "_blank" ? "noopener,noreferrer" : undefined);
 }

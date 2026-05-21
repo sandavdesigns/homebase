@@ -432,17 +432,6 @@ body.is-locked.is-share-mode #lockedState {
   min-width: min(420px, 100%);
 }
 
-.search-inline {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.search-inline button {
-  min-height: 38px;
-  padding-inline: 12px;
-}
-
 input,
 select,
 textarea {
