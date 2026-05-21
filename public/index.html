@@ -33,7 +33,10 @@
         <button id="searchToggleButton" type="button" aria-expanded="false">Suche</button>
         <label class="search" id="searchPanel" hidden>
           <span>Suchen</span>
-          <input id="searchInput" type="search" placeholder="Link, Kategorie oder Notiz" autocomplete="off" />
+          <span class="search-inline">
+            <input id="searchInput" type="search" placeholder="Link, Kategorie oder Google-Suche" autocomplete="off" />
+            <button id="googleSearchButton" type="button">Google</button>
+          </span>
         </label>
         <button class="primary admin-only" id="addButton" type="button">+ Link</button>
         <button class="admin-only" id="newNoteButton" type="button">+ Notiz</button>

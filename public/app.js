@@ -29,6 +29,7 @@ const elements = {
   search: document.querySelector("#searchInput"),
   searchPanel: document.querySelector("#searchPanel"),
   searchToggleButton: document.querySelector("#searchToggleButton"),
+  googleSearchButton: document.querySelector("#googleSearchButton"),
   addButton: document.querySelector("#addButton"),
   newNoteButton: document.querySelector("#newNoteButton"),
   settingsButton: document.querySelector("#settingsButton"),
@@ -1586,6 +1587,7 @@ elements.search.addEventListener("keydown", (event) => {
   event.preventDefault();
   openGoogleSearch(elements.search.value);
 });
+elements.googleSearchButton.addEventListener("click", () => openGoogleSearch(elements.search.value));
 elements.searchToggleButton.addEventListener("click", () => {
   state.searchOpen = !state.searchOpen;
   if (!state.searchOpen) {
