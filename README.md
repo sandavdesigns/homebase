@@ -269,6 +269,16 @@ Proxmox mit API-Token:
 
 Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt es zusaetzlich Nodes, laufende VM/CT und RAM-Nutzung an. Unraid nutzt einen API-Key fuer `/graphql`; AMP nutzt Benutzername und Passwort fuer `Core/Login` und `Core/GetStatus`.
 
+Home Assistant:
+
+- Widget: `Home Assistant`
+- Status-URL: deine Home-Assistant-URL, zum Beispiel `http://homeassistant.local:8123`
+- API-Key / Long-Lived Token: in Home Assistant unter Profil -> Sicherheit -> Long-Lived Access Tokens erstellen
+
+Homebase liest damit `/api/`, `/api/config` und `/api/states` und zeigt Version, Entities sowie nicht erreichbare Entities an.
+
+Die Suche auf der Startseite kann ausserdem direkt Google oeffnen: Suchbegriff eingeben und `Enter` druecken. In der Befehlspalette (`Cmd/Ctrl + K`) erscheint bei Suchtext ebenfalls ein Google-Treffer.
+
 Status-Zugangsdaten werden in `homebase.json` gespeichert und sind damit auch im JSON-Export enthalten. Wenn du Secrets lieber ausschliesslich als Container-Environment halten willst, funktioniert `HOMEBASE_STATUS_TARGETS` weiterhin als Fallback:
 
 ```text

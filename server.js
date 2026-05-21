@@ -222,7 +222,7 @@ function normalizeStatusWidget(widget, fallbackUrl = "") {
   const enabled = widget?.enabled === true;
   return {
     enabled,
-    type: ["basic", "proxmox", "unraid", "amp"].includes(String(widget?.type || "").toLowerCase())
+    type: ["basic", "proxmox", "unraid", "amp", "homeassistant"].includes(String(widget?.type || "").toLowerCase())
       ? String(widget.type).toLowerCase()
       : "basic",
     url: normalizeUrl(String(widget?.url || fallbackUrl || "")),
@@ -695,6 +695,10 @@ async function readStatusTarget(target) {
     if (target.type === "proxmox") return await readProxmoxStatus(target, base);
     if (target.type === "unraid" && target.apiKey) return await readUnraidStatus(target, base);
     if (target.type === "amp" && target.username && target.password) return await readAmpStatus(target, base);
+    if (target.type === "homeassistant") {
+      if (!target.apiKey) return { ...base, message: "Home Assistant Token fehlt" };
+      return await readHomeAssistantStatus(target, base);
+    }
     return await readGenericServiceStatus(target, base);
   } catch (error) {
     return {
@@ -702,6 +706,41 @@ async function readStatusTarget(target) {
       message: error.message || "Nicht erreichbar"
     };
   }
+}
+
+async function readHomeAssistantStatus(target, base) {
+  const headers = { Authorization: `Bearer ${target.apiKey}` };
+  const apiBase = new URL(target.statusPath || "/api/", target.url).href;
+  const info = await requestJson(apiBase, { headers });
+  const config = await requestJson(new URL("/api/config", target.url).href, { headers }).catch(() => ({}));
+  const states = await requestJson(new URL("/api/states", target.url).href, { headers }).catch(() => []);
+  const entities = Array.isArray(states) ? states : [];
+  const unavailable = entities.filter((entity) => entity.state === "unavailable").length;
+  const lightsOn = entities.filter((entity) => entity.entity_id?.startsWith("light.") && entity.state === "on").length;
+  const binaryOn = entities.filter((entity) => entity.entity_id?.startsWith("binary_sensor.") && entity.state === "on").length;
+  const metrics = [
+    { label: "Entities", value: String(entities.length) },
+    { label: "Ausfälle", value: String(unavailable) }
+  ];
+  if (lightsOn) metrics.push({ label: "Licht", value: String(lightsOn) });
+  if (binaryOn) metrics.push({ label: "Sensor", value: String(binaryOn) });
+  if (config.version) metrics.push({ label: "Version", value: String(config.version).slice(0, 24) });
+
+  return {
+    ...base,
+    ok: true,
+    status: unavailable ? "warning" : "online",
+    message: config.location_name || info.message || "Home Assistant erreichbar",
+    details: entities
+      .filter((entity) => ["unavailable", "unknown"].includes(entity.state))
+      .slice(0, 4)
+      .map((entity) => ({
+        label: entity.attributes?.friendly_name || entity.entity_id,
+        value: entity.state,
+        online: false
+      })),
+    metrics
+  };
 }
 
 async function readUnraidStatus(target, base) {

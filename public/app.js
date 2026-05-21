@@ -517,6 +517,7 @@ function formatStatusType(type) {
     proxmox: "Proxmox",
     unraid: "Unraid",
     amp: "AMP",
+    homeassistant: "Home Assistant",
     basic: "Service"
   };
   return names[type] || type || "Service";
@@ -842,6 +843,7 @@ function getStatusMetricKind(label) {
   if (normalized === "server") return "server";
   if (normalized === "cpu") return "cpu";
   if (normalized === "ram" || normalized === "speicher") return "ram";
+  if (normalized === "entities") return "server";
   return "";
 }
 
@@ -899,7 +901,7 @@ function renderLinkStatusFields() {
   const type = elements.linkStatusType.value || "basic";
   elements.linkStatusFields.hidden = !enabled;
   elements.linkStatusFields.querySelectorAll("[data-status-field]").forEach((field) => {
-    field.hidden = field.dataset.statusField !== type;
+    field.hidden = !field.dataset.statusField.split(/\s+/).includes(type);
   });
 }
 
@@ -1546,11 +1548,12 @@ function getCommandResults(query) {
     .filter((note) => note.text.toLowerCase().includes(normalized))
     .slice(0, 3)
     .map((note) => ({ type: "note", title: note.text.slice(0, 70), meta: "Notiz" }));
-  return [...matches, ...categories, ...notes].slice(0, 10);
+  const google = { type: "google", title: `Google: ${query}`, meta: "Websuche", url: googleSearchUrl(query) };
+  return [[...matches, ...categories, ...notes].slice(0, 9), google].flat();
 }
 
 function activateCommandResult(result) {
-  if (result.type === "link" && result.url) {
+  if ((result.type === "link" || result.type === "google") && result.url) {
     const target = state.preferences?.openLinksInNewTab === false ? "_self" : "_blank";
     window.open(result.url, target, target === "_blank" ? "noopener,noreferrer" : undefined);
   } else {
@@ -1563,9 +1566,25 @@ function activateCommandResult(result) {
   elements.commandDialog.close();
 }
 
+function googleSearchUrl(query) {
+  return `https://www.google.com/search?q=${encodeURIComponent(query.trim())}`;
+}
+
+function openGoogleSearch(query) {
+  const search = query.trim();
+  if (!search) return;
+  const target = state.preferences?.openLinksInNewTab === false ? "_self" : "_blank";
+  window.open(googleSearchUrl(search), target, target === "_blank" ? "noopener,noreferrer" : undefined);
+}
+
 elements.search.addEventListener("input", (event) => {
   state.query = event.target.value;
   renderGroups();
+});
+elements.search.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  openGoogleSearch(elements.search.value);
 });
 elements.searchToggleButton.addEventListener("click", () => {
   state.searchOpen = !state.searchOpen;
