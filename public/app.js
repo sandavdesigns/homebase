@@ -84,6 +84,7 @@ const elements = {
   linkStatusTokenId: document.querySelector("#linkStatusTokenId"),
   linkStatusTokenSecret: document.querySelector("#linkStatusTokenSecret"),
   linkStatusApiKey: document.querySelector("#linkStatusApiKey"),
+  linkStatusEntities: document.querySelector("#linkStatusEntities"),
   linkStatusUsername: document.querySelector("#linkStatusUsername"),
   linkStatusPassword: document.querySelector("#linkStatusPassword"),
   linkStatusPath: document.querySelector("#linkStatusPath"),
@@ -802,6 +803,8 @@ function createLinkStatus(status) {
 
   panel.append(line);
   if (metricItems.length) panel.append(metrics);
+  const controls = createHomeAssistantControls(status);
+  if (controls) panel.append(controls);
   const details = createStatusDetails(status.details);
   if (details) panel.append(details);
   if (Array.isArray(status.debug) && status.debug.length) {
@@ -811,6 +814,41 @@ function createLinkStatus(status) {
     panel.append(debug);
   }
   return panel;
+}
+
+function createHomeAssistantControls(status) {
+  const controls = Array.isArray(status.controls) ? status.controls : [];
+  if (!controls.length) return null;
+  const list = document.createElement("div");
+  list.className = "ha-controls";
+  list.replaceChildren(...controls.map((control) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `ha-control is-${control.state === "on" ? "on" : "off"}`;
+    button.textContent = control.label;
+    button.title = `${control.entityId}: ${control.state}`;
+    button.disabled = !control.toggleable || !control.online;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleHomeAssistantControl(status, control, button).catch((error) => showToast(error.message));
+    });
+    return button;
+  }));
+  return list;
+}
+
+async function toggleHomeAssistantControl(status, control, button) {
+  button.disabled = true;
+  const response = await fetch("/api/homeassistant/toggle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ linkId: status.id, entityId: control.entityId })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "Schalten fehlgeschlagen");
+  showToast(`${control.label} geschaltet`);
+  await loadStatus();
 }
 
 function openStatusDetail(status) {
@@ -886,6 +924,7 @@ function setLinkStatusWidgetForm(widget = {}) {
   elements.linkStatusTokenId.value = widget?.tokenId || "";
   elements.linkStatusTokenSecret.value = widget?.tokenSecret || "";
   elements.linkStatusApiKey.value = widget?.apiKey || "";
+  elements.linkStatusEntities.value = Array.isArray(widget?.entities) ? widget.entities.join(", ") : widget?.entities || "";
   elements.linkStatusUsername.value = widget?.username || "";
   elements.linkStatusPassword.value = widget?.password || "";
   elements.linkStatusTokenSecret.type = "password";
@@ -1116,6 +1155,7 @@ async function saveLink() {
       tokenId: elements.linkStatusTokenId.value.trim(),
       tokenSecret: elements.linkStatusTokenSecret.value.trim(),
       apiKey: elements.linkStatusApiKey.value.trim(),
+      entities: elements.linkStatusEntities.value.trim(),
       username: elements.linkStatusUsername.value.trim(),
       password: elements.linkStatusPassword.value,
       statusPath: elements.linkStatusPath.value.trim(),

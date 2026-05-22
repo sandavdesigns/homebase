@@ -232,10 +232,20 @@ function normalizeStatusWidget(widget, fallbackUrl = "") {
     apiKey: String(widget?.apiKey || "").slice(0, 260),
     username: String(widget?.username || "").slice(0, 160),
     password: String(widget?.password || "").slice(0, 260),
+    entities: normalizeHomeAssistantEntities(widget?.entities),
     headerName: String(widget?.headerName || "").slice(0, 80),
     headerValue: String(widget?.headerValue || "").slice(0, 260),
     debug: widget?.debug === true
   };
+}
+
+function normalizeHomeAssistantEntities(value) {
+  const raw = Array.isArray(value) ? value.join(",") : String(value || "");
+  return raw
+    .split(/[\n,]+/)
+    .map((entity) => entity.trim())
+    .filter((entity) => /^[a-z_]+\.[\w-]+$/i.test(entity))
+    .slice(0, 12);
 }
 
 function normalizeCategories(categories, links) {
@@ -715,15 +725,14 @@ async function readHomeAssistantStatus(target, base) {
   const config = await requestJson(new URL("/api/config", target.url).href, { headers }).catch(() => ({}));
   const states = await requestJson(new URL("/api/states", target.url).href, { headers }).catch(() => []);
   const entities = Array.isArray(states) ? states : [];
+  const controls = buildHomeAssistantControls(target, entities);
   const unavailable = entities.filter((entity) => entity.state === "unavailable").length;
-  const lightsOn = entities.filter((entity) => entity.entity_id?.startsWith("light.") && entity.state === "on").length;
-  const binaryOn = entities.filter((entity) => entity.entity_id?.startsWith("binary_sensor.") && entity.state === "on").length;
+  const controlsOn = controls.filter((entity) => entity.state === "on").length;
   const metrics = [
     { label: "Entities", value: String(entities.length) },
-    { label: "Ausfälle", value: String(unavailable) }
+    { label: "Ausfälle", value: String(unavailable) },
+    { label: "Schalter", value: `${controlsOn}/${controls.length}` }
   ];
-  if (lightsOn) metrics.push({ label: "Licht", value: String(lightsOn) });
-  if (binaryOn) metrics.push({ label: "Sensor", value: String(binaryOn) });
   if (config.version) metrics.push({ label: "Version", value: String(config.version).slice(0, 24) });
 
   return {
@@ -731,9 +740,11 @@ async function readHomeAssistantStatus(target, base) {
     ok: true,
     status: unavailable ? "warning" : "online",
     message: config.location_name || info.message || "Home Assistant erreichbar",
+    controls,
     details: entities
+      .filter((entity) => !controls.some((control) => control.entityId === entity.entity_id))
       .filter((entity) => ["unavailable", "unknown"].includes(entity.state))
-      .slice(0, 4)
+      .slice(0, controls.length ? 2 : 4)
       .map((entity) => ({
         label: entity.attributes?.friendly_name || entity.entity_id,
         value: entity.state,
@@ -741,6 +752,57 @@ async function readHomeAssistantStatus(target, base) {
       })),
     metrics
   };
+}
+
+function buildHomeAssistantControls(target, states) {
+  const stateMap = new Map(states.map((entity) => [entity.entity_id, entity]));
+  return normalizeHomeAssistantEntities(target.entities).map((entityId) => {
+    const entity = stateMap.get(entityId) || {};
+    const domain = entityId.split(".")[0];
+    return {
+      entityId,
+      domain,
+      label: entity.attributes?.friendly_name || entityId.replace(/^[^.]+\./, "").replace(/_/g, " "),
+      state: String(entity.state || "unknown"),
+      online: !["unavailable", "unknown"].includes(String(entity.state || "unknown")),
+      toggleable: ["switch", "light", "input_boolean", "fan", "cover", "script", "scene", "automation"].includes(domain)
+    };
+  });
+}
+
+function findHomeAssistantTarget(data, linkId) {
+  for (const profile of data.profiles || []) {
+    for (const link of profile.links || []) {
+      if (link.id !== linkId || link.statusWidget?.type !== "homeassistant" || !link.statusWidget?.enabled) continue;
+      return {
+        ...link.statusWidget,
+        id: link.id,
+        name: link.title,
+        url: link.statusWidget.url || link.url
+      };
+    }
+  }
+  return null;
+}
+
+async function toggleHomeAssistantEntity(linkId, entityId) {
+  const data = readData();
+  const target = findHomeAssistantTarget(data, linkId);
+  if (!target) throw new Error("Home Assistant Widget nicht gefunden");
+  if (!target.apiKey) throw new Error("Home Assistant Token fehlt");
+  const controls = normalizeHomeAssistantEntities(target.entities);
+  if (!controls.includes(entityId)) throw new Error("Entity ist nicht fuer Buttons freigegeben");
+  const domain = entityId.split(".")[0];
+  const service = ["script", "scene"].includes(domain) ? "turn_on" : "toggle";
+  await requestJsonPost(new URL(`/api/services/${encodeURIComponent(domain)}/${service}`, target.url).href, {
+    headers: { Authorization: `Bearer ${target.apiKey}` },
+    body: { entity_id: entityId }
+  });
+  return readStatusTarget({
+    ...target,
+    id: linkId,
+    type: "homeassistant"
+  });
 }
 
 async function readUnraidStatus(target, base) {
@@ -1823,6 +1885,13 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/status" && req.method === "GET") {
       sendJson(res, 200, await readStatusTargets());
+      return;
+    }
+
+    if (url.pathname === "/api/homeassistant/toggle" && req.method === "POST") {
+      if (!requireAuth(req, res)) return;
+      const body = JSON.parse(await readRequestBody(req));
+      sendJson(res, 200, await toggleHomeAssistantEntity(String(body.linkId || ""), String(body.entityId || "")));
       return;
     }
 

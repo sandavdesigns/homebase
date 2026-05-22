@@ -274,8 +274,9 @@ Home Assistant:
 - Widget: `Home Assistant`
 - Status-URL: deine Home-Assistant-URL, zum Beispiel `http://homeassistant.local:8123`
 - API-Key / Long-Lived Token: in Home Assistant unter Profil -> Sicherheit -> Long-Lived Access Tokens erstellen
+- HA Schalter: Entity-IDs fuer kleine Buttons, zum Beispiel `switch.steckdose, light.schreibtisch`
 
-Homebase liest damit `/api/`, `/api/config` und `/api/states` und zeigt Version, Entities sowie nicht erreichbare Entities an.
+Homebase liest damit `/api/`, `/api/config` und `/api/states` und zeigt Version, Entities sowie deine konfigurierten Schalter an. Button-Klicks laufen ueber den Homebase-Server, der Token wird also nicht an den Browser ausgegeben.
 
 Die Suche auf der Startseite kann ausserdem direkt Google oeffnen: Suchbegriff eingeben und `Enter` druecken. In der Befehlspalette (`Cmd/Ctrl + K`) erscheint bei Suchtext ebenfalls ein Google-Treffer.
 

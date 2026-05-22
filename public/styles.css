@@ -1272,6 +1272,32 @@ body[data-theme="time-circuit"] .link-title {
   align-items: center;
 }
 
+.ha-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ha-control {
+  min-height: 26px;
+  border-color: color-mix(in srgb, var(--service-glow, var(--accent)), transparent 58%);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.16);
+  font-size: 0.72rem;
+}
+
+.ha-control.is-on {
+  color: var(--good);
+  background: color-mix(in srgb, var(--good), transparent 86%);
+}
+
+.ha-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .metric-icon {
   position: relative;
   width: 11px;
