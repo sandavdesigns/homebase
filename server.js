@@ -726,11 +726,9 @@ async function readHomeAssistantStatus(target, base) {
   const states = await requestJson(new URL("/api/states", target.url).href, { headers }).catch(() => []);
   const entities = Array.isArray(states) ? states : [];
   const controls = buildHomeAssistantControls(target, entities);
-  const unavailable = entities.filter((entity) => entity.state === "unavailable").length;
   const controlsOn = controls.filter((entity) => entity.state === "on").length;
   const metrics = [
     { label: "Entities", value: String(entities.length) },
-    { label: "Ausfälle", value: String(unavailable) },
     { label: "Schalter", value: `${controlsOn}/${controls.length}` }
   ];
   if (config.version) metrics.push({ label: "Version", value: String(config.version).slice(0, 24) });
@@ -738,18 +736,12 @@ async function readHomeAssistantStatus(target, base) {
   return {
     ...base,
     ok: true,
-    status: unavailable ? "warning" : "online",
+    status: "online",
     message: config.location_name || info.message || "Home Assistant erreichbar",
     controls,
-    details: entities
-      .filter((entity) => !controls.some((control) => control.entityId === entity.entity_id))
-      .filter((entity) => ["unavailable", "unknown"].includes(entity.state))
-      .slice(0, controls.length ? 2 : 4)
-      .map((entity) => ({
-        label: entity.attributes?.friendly_name || entity.entity_id,
-        value: entity.state,
-        online: false
-      })),
+    details: controls
+      .filter((control) => !control.online)
+      .map((control) => ({ label: control.label, value: control.state, online: false })),
     metrics
   };
 }

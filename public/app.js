@@ -840,15 +840,47 @@ function createHomeAssistantControls(status) {
 
 async function toggleHomeAssistantControl(status, control, button) {
   button.disabled = true;
+  const nextState = control.state === "on" ? "off" : "on";
+  updateHomeAssistantControlState(status.id, control.entityId, nextState);
   const response = await fetch("/api/homeassistant/toggle", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ linkId: status.id, entityId: control.entityId })
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "Schalten fehlgeschlagen");
+  if (!response.ok) {
+    updateHomeAssistantControlState(status.id, control.entityId, control.state);
+    throw new Error(result.error || "Schalten fehlgeschlagen");
+  }
+  if (result.id) updateStatusItem(result);
   showToast(`${control.label} geschaltet`);
-  await loadStatus();
+  window.setTimeout(() => loadStatus().catch(() => {}), 1200);
+}
+
+function updateHomeAssistantControlState(statusId, entityId, nextState) {
+  const item = (state.status.items || []).find((candidate) => candidate.id === statusId);
+  if (!item || !Array.isArray(item.controls)) return;
+  item.controls = item.controls.map((control) => control.entityId === entityId
+    ? { ...control, state: nextState, online: true }
+    : control);
+  renderStatus();
+  renderStatsWidget();
+  renderGroups();
+}
+
+function updateStatusItem(item) {
+  const items = Array.isArray(state.status.items) ? state.status.items.slice() : [];
+  const index = items.findIndex((candidate) => candidate.id === item.id);
+  if (index >= 0) items.splice(index, 1, item);
+  else items.push(item);
+  state.status = {
+    ...(state.status || {}),
+    items,
+    updatedAt: new Date().toISOString()
+  };
+  renderStatus();
+  renderStatsWidget();
+  renderGroups();
 }
 
 function openStatusDetail(status) {
