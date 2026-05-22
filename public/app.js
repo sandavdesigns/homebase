@@ -756,7 +756,8 @@ function getStatusForLink(link) {
 
 function createLinkStatus(status) {
   const panel = document.createElement("div");
-  panel.className = "link-status-panel";
+  const isHomeAssistant = status.type === "homeassistant";
+  panel.className = `link-status-panel${isHomeAssistant ? " is-homeassistant" : ""}`;
   panel.role = "button";
   panel.tabIndex = 0;
   panel.ariaLabel = `Details zu ${status.name || "Status"} anzeigen`;
@@ -775,13 +776,23 @@ function createLinkStatus(status) {
   const dot = document.createElement("span");
   dot.className = "link-status-dot";
   const message = document.createElement("span");
-  message.textContent = status.message || (status.ok ? "Online" : "Offline");
+  message.textContent = isHomeAssistant ? "Home" : status.message || (status.ok ? "Online" : "Offline");
   line.append(dot, message);
+  if (isHomeAssistant) {
+    const version = getStatusMetric(status, "Version");
+    if (version) {
+      const versionText = document.createElement("strong");
+      versionText.className = "ha-version";
+      versionText.textContent = version;
+      line.append(versionText);
+    }
+  }
 
   const metrics = document.createElement("div");
   metrics.className = "link-status-metrics";
   const metricItems = (Array.isArray(status.metrics) ? status.metrics : [])
     .filter((metric) => String(metric.label).toLowerCase() !== "user")
+    .filter((metric) => !isHomeAssistant || String(metric.label).toLowerCase() !== "version")
     .slice(0, 5);
   metrics.replaceChildren(...metricItems.map((metric) => {
     const item = document.createElement("span");
@@ -802,7 +813,7 @@ function createLinkStatus(status) {
   }));
 
   panel.append(line);
-  if (metricItems.length) panel.append(metrics);
+  if (metricItems.length && !isHomeAssistant) panel.append(metrics);
   const controls = createHomeAssistantControls(status);
   if (controls) panel.append(controls);
   const details = createStatusDetails(status.details);
@@ -814,6 +825,12 @@ function createLinkStatus(status) {
     panel.append(debug);
   }
   return panel;
+}
+
+function getStatusMetric(status, label) {
+  const metric = (Array.isArray(status.metrics) ? status.metrics : [])
+    .find((candidate) => String(candidate.label).toLowerCase() === label.toLowerCase());
+  return metric?.value ? String(metric.value) : "";
 }
 
 function createHomeAssistantControls(status) {

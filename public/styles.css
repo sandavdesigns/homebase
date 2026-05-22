@@ -1241,6 +1241,20 @@ body[data-theme="time-circuit"] .link-title {
   line-height: 1.2;
 }
 
+.link-status-panel.is-homeassistant .link-status-line {
+  justify-content: space-between;
+}
+
+.link-status-panel.is-homeassistant .link-status-line > span:nth-child(2) {
+  margin-right: auto;
+}
+
+.ha-version {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .link-status-dot {
   width: 8px;
   height: 8px;
@@ -1275,17 +1289,18 @@ body[data-theme="time-circuit"] .link-title {
 .ha-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
 }
 
 .ha-control {
-  min-height: 26px;
+  min-height: 28px;
   border-color: color-mix(in srgb, var(--service-glow, var(--accent)), transparent 58%);
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   color: var(--muted);
   background: rgba(0, 0, 0, 0.16);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 800;
 }
 
 .ha-control.is-on {

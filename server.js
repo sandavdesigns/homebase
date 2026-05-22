@@ -728,7 +728,6 @@ async function readHomeAssistantStatus(target, base) {
   const controls = buildHomeAssistantControls(target, entities);
   const controlsOn = controls.filter((entity) => entity.state === "on").length;
   const metrics = [
-    { label: "Entities", value: String(entities.length) },
     { label: "Schalter", value: `${controlsOn}/${controls.length}` }
   ];
   if (config.version) metrics.push({ label: "Version", value: String(config.version).slice(0, 24) });
