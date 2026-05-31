@@ -1451,6 +1451,7 @@ async function readProxmoxStatus(target, base) {
         value: updateLabel ? `${node.status || "unknown"} · ${updateLabel}` : node.status || "unknown"
       };
     }),
+    debug: target.debug === true ? updates.debug : [],
     metrics
   };
 }
@@ -1460,25 +1461,40 @@ async function readProxmoxUpdates(target, headers, nodes) {
     .map(getProxmoxNodeName)
     .filter(Boolean)
     .slice(0, 8);
-  const empty = { checked: false, total: undefined, nodes: new Map() };
+  const empty = { checked: false, total: undefined, nodes: new Map(), debug: [] };
   if (!nodeNames.length) return empty;
 
   const results = await Promise.all(nodeNames.map(async (nodeName) => {
+    const errors = [];
     try {
       const payload = await requestJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/update`, target.url).href, { headers });
       const updates = extractProxmoxUpdateList(payload);
-      return { nodeName, count: updates.length };
-    } catch {
-      return { nodeName, count: undefined };
+      return { nodeName, count: updates.length, source: "apt/update", errors };
+    } catch (error) {
+      errors.push(`${nodeName} apt/update: ${shortDebugValue(error.message || error)}`);
+    }
+
+    try {
+      const payload = await requestJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/versions`, target.url).href, { headers });
+      const updates = extractProxmoxVersionUpdates(payload);
+      return { nodeName, count: updates.length, source: "apt/versions", errors };
+    } catch (error) {
+      errors.push(`${nodeName} apt/versions: ${shortDebugValue(error.message || error)}`);
+      return { nodeName, count: undefined, source: "", errors };
     }
   }));
   const known = results.filter((result) => Number.isFinite(result.count));
-  if (!known.length) return { checked: true, total: undefined, nodes: new Map() };
+  const debug = results.flatMap((result) => [
+    ...result.errors,
+    ...(result.source && result.source !== "apt/update" ? [`${result.nodeName} updates via ${result.source}`] : [])
+  ]);
+  if (!known.length) return { checked: true, total: undefined, nodes: new Map(), debug };
 
   return {
     checked: true,
     total: known.reduce((sum, result) => sum + result.count, 0),
-    nodes: new Map(known.map((result) => [result.nodeName, result.count]))
+    nodes: new Map(known.map((result) => [result.nodeName, result.count])),
+    debug
   };
 }
 
@@ -1493,6 +1509,14 @@ function extractProxmoxUpdateList(payload) {
   if (Array.isArray(data?.updates)) return data.updates;
   if (Array.isArray(data?.packages)) return data.packages;
   return [];
+}
+
+function extractProxmoxVersionUpdates(payload) {
+  return extractProxmoxUpdateList(payload).filter((item) => {
+    const oldVersion = item?.OldVersion || item?.oldVersion || item?.oldversion;
+    const newVersion = item?.Version || item?.version;
+    return oldVersion && newVersion && String(oldVersion) !== String(newVersion);
+  });
 }
 
 async function requestJson(targetUrl, { headers = {} } = {}) {
