@@ -1433,7 +1433,7 @@ async function readProxmoxStatus(target, base) {
 
   metrics.push({ label: "Nodes", value: `${onlineNodes}/${nodes.length || 0}` });
   metrics.push({ label: "VM/CT", value: `${runningGuests}/${guests.length || 0}` });
-  if (Number.isFinite(updates.total)) metrics.push({ label: "Updates", value: String(updates.total) });
+  if (updates.checked) metrics.push({ label: "Updates", value: Number.isFinite(updates.total) ? String(updates.total) : "?" });
   if (totalMemory > 0) metrics.push({ label: "RAM", value: `${Math.round((usedMemory / totalMemory) * 100)}%` });
 
   return {
@@ -1445,9 +1445,10 @@ async function readProxmoxStatus(target, base) {
       const nodeName = getProxmoxNodeName(node) || "Node";
       const nodeUpdates = updates.nodes.get(nodeName);
       const hasUpdateCount = Number.isFinite(nodeUpdates);
+      const updateLabel = hasUpdateCount ? `${nodeUpdates} Updates` : updates.checked ? "Updates ?" : "";
       return {
         label: nodeName,
-        value: hasUpdateCount && nodeUpdates > 0 ? `${node.status || "unknown"} · ${nodeUpdates} Updates` : node.status || "unknown"
+        value: updateLabel ? `${node.status || "unknown"} · ${updateLabel}` : node.status || "unknown"
       };
     }),
     metrics
@@ -1459,7 +1460,7 @@ async function readProxmoxUpdates(target, headers, nodes) {
     .map(getProxmoxNodeName)
     .filter(Boolean)
     .slice(0, 8);
-  const empty = { total: undefined, nodes: new Map() };
+  const empty = { checked: false, total: undefined, nodes: new Map() };
   if (!nodeNames.length) return empty;
 
   const results = await Promise.all(nodeNames.map(async (nodeName) => {
@@ -1472,9 +1473,10 @@ async function readProxmoxUpdates(target, headers, nodes) {
     }
   }));
   const known = results.filter((result) => Number.isFinite(result.count));
-  if (!known.length) return empty;
+  if (!known.length) return { checked: true, total: undefined, nodes: new Map() };
 
   return {
+    checked: true,
     total: known.reduce((sum, result) => sum + result.count, 0),
     nodes: new Map(known.map((result) => [result.nodeName, result.count]))
   };

@@ -267,7 +267,7 @@ Proxmox mit API-Token:
 - Token-ID: zum Beispiel `root@pam!homebase`
 - Token-Secret: dein Proxmox API-Token
 
-Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt es zusaetzlich Nodes, laufende VM/CT, offene Updates und RAM-Nutzung an. Falls der Token keine Rechte auf die APT-Update-Liste hat, blendet Homebase nur die Update-Zahl aus. Unraid nutzt einen API-Key fuer `/graphql`; AMP nutzt Benutzername und Passwort fuer `Core/Login` und `Core/GetStatus`.
+Ohne Proxmox-Token prueft Homebase nur die API-Erreichbarkeit. Mit Token zeigt es zusaetzlich Nodes, laufende VM/CT, offene Updates und RAM-Nutzung an. Falls der Token keine Rechte auf die APT-Update-Liste hat, zeigt Homebase `Updates ?` an. Unraid nutzt einen API-Key fuer `/graphql`; AMP nutzt Benutzername und Passwort fuer `Core/Login` und `Core/GetStatus`.
 
 Home Assistant:
 
