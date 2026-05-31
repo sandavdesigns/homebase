@@ -1429,9 +1429,11 @@ async function readProxmoxStatus(target, base) {
   const runningGuests = guests.filter((item) => item.status === "running").length;
   const totalMemory = nodes.reduce((sum, item) => sum + Number(item.maxmem || 0), 0);
   const usedMemory = nodes.reduce((sum, item) => sum + Number(item.mem || 0), 0);
+  const updates = await readProxmoxUpdates(target, headers, nodes);
 
   metrics.push({ label: "Nodes", value: `${onlineNodes}/${nodes.length || 0}` });
   metrics.push({ label: "VM/CT", value: `${runningGuests}/${guests.length || 0}` });
+  if (Number.isFinite(updates.total)) metrics.push({ label: "Updates", value: String(updates.total) });
   if (totalMemory > 0) metrics.push({ label: "RAM", value: `${Math.round((usedMemory / totalMemory) * 100)}%` });
 
   return {
@@ -1439,12 +1441,56 @@ async function readProxmoxStatus(target, base) {
     ok: onlineNodes > 0 || nodes.length === 0,
     status: onlineNodes === nodes.length ? "online" : "warning",
     message: onlineNodes === nodes.length ? "Cluster online" : "Teilweise erreichbar",
-    details: nodes.slice(0, 4).map((node) => ({
-      label: node.node || node.id || "Node",
-      value: node.status || "unknown"
-    })),
+    details: nodes.slice(0, 4).map((node) => {
+      const nodeName = getProxmoxNodeName(node) || "Node";
+      const nodeUpdates = updates.nodes.get(nodeName);
+      const hasUpdateCount = Number.isFinite(nodeUpdates);
+      return {
+        label: nodeName,
+        value: hasUpdateCount && nodeUpdates > 0 ? `${node.status || "unknown"} · ${nodeUpdates} Updates` : node.status || "unknown"
+      };
+    }),
     metrics
   };
+}
+
+async function readProxmoxUpdates(target, headers, nodes) {
+  const nodeNames = nodes
+    .map(getProxmoxNodeName)
+    .filter(Boolean)
+    .slice(0, 8);
+  const empty = { total: undefined, nodes: new Map() };
+  if (!nodeNames.length) return empty;
+
+  const results = await Promise.all(nodeNames.map(async (nodeName) => {
+    try {
+      const payload = await requestJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/update`, target.url).href, { headers });
+      const updates = extractProxmoxUpdateList(payload);
+      return { nodeName, count: updates.length };
+    } catch {
+      return { nodeName, count: undefined };
+    }
+  }));
+  const known = results.filter((result) => Number.isFinite(result.count));
+  if (!known.length) return empty;
+
+  return {
+    total: known.reduce((sum, result) => sum + result.count, 0),
+    nodes: new Map(known.map((result) => [result.nodeName, result.count]))
+  };
+}
+
+function getProxmoxNodeName(node) {
+  const raw = node?.node || node?.id || "";
+  return String(raw).replace(/^node\//, "").trim();
+}
+
+function extractProxmoxUpdateList(payload) {
+  const data = payload?.data ?? payload;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.updates)) return data.updates;
+  if (Array.isArray(data?.packages)) return data.packages;
+  return [];
 }
 
 async function requestJson(targetUrl, { headers = {} } = {}) {

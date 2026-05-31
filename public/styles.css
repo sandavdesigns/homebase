@@ -1382,6 +1382,36 @@ body[data-theme="time-circuit"] .link-title {
   right: 2px;
 }
 
+.metric-icon-updates {
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.metric-icon-updates::before,
+.metric-icon-updates::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+  border-radius: 999px;
+}
+
+.metric-icon-updates::before {
+  top: 2px;
+  left: 5px;
+  width: 1px;
+  height: 5px;
+}
+
+.metric-icon-updates::after {
+  top: 5px;
+  left: 5px;
+  width: 4px;
+  height: 1px;
+  transform: rotate(-35deg);
+  transform-origin: left center;
+}
+
 .link-status-debug {
   grid-column: 1 / -1;
   max-width: 100%;

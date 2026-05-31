@@ -932,6 +932,7 @@ function getStatusMetricKind(label) {
   if (normalized === "cpu") return "cpu";
   if (normalized === "ram" || normalized === "speicher") return "ram";
   if (normalized === "entities") return "server";
+  if (normalized === "updates") return "updates";
   return "";
 }
 
