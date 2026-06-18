@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product2" />
+    <link rel="stylesheet" href="/styles.css?v=product3" />
   </head>
   <body>
     <main class="shell">
@@ -47,6 +47,15 @@
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
+        <article class="widget google-widget" id="googleWidget" hidden>
+          <form id="googleWidgetForm" class="google-widget-form" action="https://www.google.com/search" method="get" target="_blank">
+            <label for="googleWidgetInput">Google</label>
+            <div class="google-widget-search">
+              <input id="googleWidgetInput" name="q" type="search" placeholder="Wonach suchen wir?" autocomplete="off" />
+              <button id="googleWidgetButton" type="submit">Suchen</button>
+            </div>
+          </form>
+        </article>
         <article class="widget status-widget" id="statusWidget" hidden>
           <header class="widget-header">
             <p>Systemstatus</p>
@@ -260,6 +269,10 @@
           </label>
         </div>
         <div class="settings-options" aria-label="Widget-Galerie">
+          <label class="toggle-row">
+            <input id="settingShowGoogleWidget" type="checkbox" />
+            <span>Google-Suche anzeigen</span>
+          </label>
           <label class="toggle-row">
             <input id="settingShowStatsWidget" type="checkbox" />
             <span>Übersicht-Widget anzeigen</span>

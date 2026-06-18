@@ -228,6 +228,7 @@ Diese Version enthaelt diese Widgets:
 - Datum
 - Uhrzeit
 - Wetter per Open-Meteo ohne API-Key
+- Offene Google-Suchleiste als Startseiten-Widget
 - Mehrere Notizen
 - Optionale Linkstatistik
 - Optionale Statusuebersicht
@@ -242,6 +243,7 @@ Im Browser-Menue `Einstellungen` kannst du Titel und Untertitel pflegen und Anze
 - Uebersicht-Widget anzeigen
 - Status-Widget anzeigen
 - Wetter-Widget anzeigen
+- Google-Suche anzeigen
 - Status an Linkkarten anzeigen
 - Notizenbereich anzeigen
 - Links in neuem Tab oeffnen

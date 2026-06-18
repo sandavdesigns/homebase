@@ -7,7 +7,7 @@ const state = {
   profiles: [],
   categories: [],
   links: [],
-  widgets: { clock: true, notes: [], statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
+  widgets: { clock: true, notes: [], googleSearch: false, statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
   preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, compactCategoryLayout: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
@@ -39,6 +39,9 @@ const elements = {
   deleteProfileButton: document.querySelector("#deleteProfileButton"),
   themeSelect: document.querySelector("#themeSelect"),
   widgets: document.querySelector("#widgets"),
+  googleWidget: document.querySelector("#googleWidget"),
+  googleWidgetForm: document.querySelector("#googleWidgetForm"),
+  googleWidgetInput: document.querySelector("#googleWidgetInput"),
   weatherWidget: document.querySelector("#weatherWidget"),
   weatherLabel: document.querySelector("#weatherLabel"),
   weatherBody: document.querySelector("#weatherBody"),
@@ -104,6 +107,7 @@ const elements = {
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
   settingStartpageMode: document.querySelector("#settingStartpageMode"),
   settingShareMode: document.querySelector("#settingShareMode"),
+  settingShowGoogleWidget: document.querySelector("#settingShowGoogleWidget"),
   settingShowStatsWidget: document.querySelector("#settingShowStatsWidget"),
   settingShowStatusWidget: document.querySelector("#settingShowStatusWidget"),
   settingShowWeatherWidget: document.querySelector("#settingShowWeatherWidget"),
@@ -320,15 +324,20 @@ function renderProfiles() {
 
 function renderWidgets() {
   const notes = getNotes();
+  renderGoogleWidget();
   renderWeather();
   renderStatus();
   renderStatsWidget();
   const notesHidden = state.preferences?.showNotes === false || (!notes.length && !state.noteComposerOpen);
   elements.notesWidget.hidden = notesHidden;
-  elements.widgets.hidden = notesHidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
+  elements.widgets.hidden = notesHidden && elements.googleWidget.hidden && elements.statusWidget.hidden && elements.statsWidget.hidden;
   elements.noteInput.disabled = !canEdit();
   elements.addNoteButton.disabled = !canEdit();
   elements.notesList.replaceChildren(...notes.map(createNoteCard));
+}
+
+function renderGoogleWidget() {
+  elements.googleWidget.hidden = state.widgets?.googleSearch !== true;
 }
 
 function renderWeather() {
@@ -1016,6 +1025,7 @@ function openSettingsDialog() {
   elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
   elements.settingStartpageMode.checked = state.preferences?.startpageMode !== false;
   elements.settingShareMode.checked = state.preferences?.shareMode === true;
+  elements.settingShowGoogleWidget.checked = state.widgets?.googleSearch === true;
   elements.settingShowStatsWidget.checked = state.widgets?.linkStats === true;
   elements.settingShowStatusWidget.checked = state.widgets?.statusOverview === true;
   elements.settingShowWeatherWidget.checked = state.widgets?.weather?.enabled === true;
@@ -1305,6 +1315,7 @@ async function saveSettings() {
   };
   state.widgets = {
     ...(state.widgets || {}),
+    googleSearch: elements.settingShowGoogleWidget.checked,
     linkStats: elements.settingShowStatsWidget.checked,
     statusOverview: elements.settingShowStatusWidget.checked,
     weather: {
@@ -1661,12 +1672,14 @@ function googleSearchUrl(query) {
   return `https://www.google.com/search?q=${encodeURIComponent(query.trim())}`;
 }
 
-function openGoogleSearch(query) {
+function openGoogleSearch(query, fallbackInput = elements.search) {
   const search = query.trim();
   if (!search) {
-    state.searchOpen = true;
-    renderSearch();
-    elements.search.focus();
+    if (fallbackInput === elements.search) {
+      state.searchOpen = true;
+      renderSearch();
+    }
+    fallbackInput.focus();
     showToast("Suchtext eingeben");
     return;
   }
@@ -1684,6 +1697,10 @@ elements.search.addEventListener("keydown", (event) => {
   openGoogleSearch(elements.search.value);
 });
 elements.googleSearchButton.addEventListener("click", () => openGoogleSearch(elements.search.value));
+elements.googleWidgetForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  openGoogleSearch(elements.googleWidgetInput.value, elements.googleWidgetInput);
+});
 elements.searchToggleButton.addEventListener("click", () => {
   state.searchOpen = !state.searchOpen;
   if (!state.searchOpen) {

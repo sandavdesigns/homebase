@@ -34,6 +34,7 @@ const defaultData = {
   widgets: {
     clock: true,
     notes: [],
+    googleSearch: false,
     statusOverview: false,
     linkStats: false,
     weather: {
@@ -181,6 +182,7 @@ function normalizeWidgets(widgets) {
 
   return {
     clock: widgets?.clock !== false,
+    googleSearch: widgets?.googleSearch === true,
     statusOverview: widgets?.statusOverview === true,
     linkStats: widgets?.linkStats === true,
     weather: normalizeWeatherWidget(widgets?.weather),
