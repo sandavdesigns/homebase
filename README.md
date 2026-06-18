@@ -12,7 +12,7 @@ Homebase ist eine kleine, Docker-freundliche Startseite fuer das Heimnetz. Links
 - Import von Browser-Bookmarks als HTML-Datei
 - Automatischer Favicon-Abruf mit lokalem Cache
 - Optionale Link-Statusanzeigen fuer Proxmox, Unraid, AMP und einfache HTTP-Dienste
-- Themes: Retro, Time Circuit, Dark, Light und Terminal
+- Themes: Retro, Time Circuit, Dark, Light, Terminal, Discord Dark und Discord Light
 - Startseiten- und Freigabe-Modus fuer normale Read-only Nutzung
 - Widget-Galerie fuer Wetter, Notizen, Statusuebersicht und Linkstatistik
 
@@ -147,7 +147,9 @@ Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt
 
 ## Themes
 
-Das Theme-Dropdown wechselt zwischen `Retro`, `Time Circuit`, `Dark`, `Light` und `Terminal`. Die Auswahl wird in `homebase.json` gespeichert.
+Das Theme-Dropdown wechselt zwischen `Retro`, `Time Circuit`, `Dark`, `Light`, `Terminal`, `Discord Dark` und `Discord Light`. Die Auswahl wird in `homebase.json` gespeichert.
+
+Optional kannst du in den Einstellungen eine Hintergrundbild-URL setzen und die Transparenz des Hintergrund-Layers per Slider regeln. Bleibt die URL leer, nutzt Homebase nur das jeweilige Theme.
 
 ## Import, Backup und Restore
 

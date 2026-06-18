@@ -30,6 +30,10 @@ const defaultData = {
   title: "Homebase",
   subtitle: "Deine Startseite fuer Links, Profile und kleine Widgets",
   theme: "retro",
+  appearance: {
+    backgroundImage: "",
+    backgroundOpacity: 0.35
+  },
   activeProfileId: "default",
   widgets: {
     clock: true,
@@ -134,6 +138,7 @@ function normalizeData(data) {
     title,
     subtitle,
     theme: normalizeTheme(data.theme),
+    appearance: normalizeAppearance(data.appearance),
     activeProfileId,
     widgets: normalizeWidgets(data.widgets),
     preferences: normalizePreferences(data.preferences),
@@ -169,7 +174,28 @@ function normalizeProfile(profile) {
 }
 
 function normalizeTheme(theme) {
-  return ["retro", "time-circuit", "dark", "light", "terminal"].includes(theme) ? theme : "retro";
+  return ["retro", "time-circuit", "dark", "light", "terminal", "discord-dark", "discord-light"].includes(theme) ? theme : "retro";
+}
+
+function normalizeAppearance(appearance) {
+  const backgroundImage = normalizeBackgroundImage(appearance?.backgroundImage || appearance?.backgroundUrl || "");
+  const rawOpacity = Number(appearance?.backgroundOpacity);
+  const backgroundOpacity = Number.isFinite(rawOpacity)
+    ? Math.min(0.9, Math.max(0, rawOpacity))
+    : 0.35;
+  return { backgroundImage, backgroundOpacity };
+}
+
+function normalizeBackgroundImage(value) {
+  const trimmed = String(value || "").trim().slice(0, 1000);
+  if (!trimmed) return "";
+  const normalized = normalizeUrl(trimmed);
+  try {
+    const parsed = new URL(normalized);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? normalized : "";
+  } catch {
+    return "";
+  }
 }
 
 function normalizeWidgets(widgets) {

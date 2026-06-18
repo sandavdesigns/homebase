@@ -3,6 +3,7 @@ const state = {
   title: "Homebase",
   subtitle: "",
   theme: "retro",
+  appearance: { backgroundImage: "", backgroundOpacity: 0.35 },
   activeProfileId: "default",
   profiles: [],
   categories: [],
@@ -21,6 +22,7 @@ const state = {
 const elements = {
   title: document.querySelector("#pageTitle"),
   subtitle: document.querySelector("#pageSubtitle"),
+  customBackground: document.querySelector("#customBackground"),
   date: document.querySelector("#dateLabel"),
   time: document.querySelector("#timeLabel"),
   groups: document.querySelector("#groups"),
@@ -100,6 +102,9 @@ const elements = {
   settingsForm: document.querySelector("#settingsForm"),
   settingsTitle: document.querySelector("#settingsTitle"),
   settingsSubtitle: document.querySelector("#settingsSubtitle"),
+  settingsBackgroundImage: document.querySelector("#settingsBackgroundImage"),
+  settingsBackgroundOpacity: document.querySelector("#settingsBackgroundOpacity"),
+  settingsBackgroundOpacityValue: document.querySelector("#settingsBackgroundOpacityValue"),
   settingShowCategoryCounts: document.querySelector("#settingShowCategoryCounts"),
   settingCompactCategoryLayout: document.querySelector("#settingCompactCategoryLayout"),
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
@@ -284,6 +289,7 @@ function syncProfileFromAliases() {
 function render() {
   document.title = state.title || "Homebase";
   document.body.dataset.theme = state.theme || "retro";
+  renderAppearance();
   elements.title.textContent = state.title;
   elements.subtitle.textContent = state.subtitle;
   elements.themeSelect.value = state.theme || "retro";
@@ -293,6 +299,14 @@ function render() {
   renderSearch();
   renderWidgets();
   renderGroups();
+}
+
+function renderAppearance() {
+  const image = normalizeBackgroundImageUrl(state.appearance?.backgroundImage || "");
+  const opacity = normalizeBackgroundOpacity(state.appearance?.backgroundOpacity);
+  document.body.classList.toggle("has-custom-background", Boolean(image));
+  elements.customBackground.style.backgroundImage = image ? `url("${escapeCssUrl(image)}")` : "";
+  elements.customBackground.style.opacity = String(opacity);
 }
 
 function renderAdminState() {
@@ -1018,6 +1032,9 @@ function openSettingsDialog() {
   elements.settingsTitle.value = state.title;
   elements.settingsSubtitle.value = state.subtitle;
   elements.themeSelect.value = state.theme || "retro";
+  elements.settingsBackgroundImage.value = state.appearance?.backgroundImage || "";
+  elements.settingsBackgroundOpacity.value = String(Math.round(normalizeBackgroundOpacity(state.appearance?.backgroundOpacity) * 100));
+  renderBackgroundOpacityValue();
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
   elements.settingCompactCategoryLayout.checked = state.preferences?.compactCategoryLayout === true;
   elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
@@ -1038,6 +1055,10 @@ function openSettingsDialog() {
 
 function renderWeatherSettings() {
   elements.weatherSettings.hidden = !elements.settingShowWeatherWidget.checked;
+}
+
+function renderBackgroundOpacityValue() {
+  elements.settingsBackgroundOpacityValue.textContent = `${elements.settingsBackgroundOpacity.value || 0}%`;
 }
 
 function openNoteComposer() {
@@ -1303,6 +1324,11 @@ async function saveSettings() {
   state.title = elements.settingsTitle.value.trim();
   state.subtitle = elements.settingsSubtitle.value.trim();
   state.theme = elements.themeSelect.value || "retro";
+  state.appearance = {
+    ...(state.appearance || {}),
+    backgroundImage: normalizeBackgroundImageUrl(elements.settingsBackgroundImage.value),
+    backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100)
+  };
   state.preferences = {
     ...(state.preferences || {}),
     showCategoryCounts: elements.settingShowCategoryCounts.checked,
@@ -1587,6 +1613,27 @@ function normalizeUrl(url) {
   return `https://${trimmed}`;
 }
 
+function normalizeBackgroundImageUrl(value) {
+  const normalized = normalizeUrl(String(value || ""));
+  if (!normalized) return "";
+  try {
+    const parsed = new URL(normalized);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? normalized : "";
+  } catch {
+    return "";
+  }
+}
+
+function normalizeBackgroundOpacity(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0.35;
+  return Math.min(0.9, Math.max(0, number));
+}
+
+function escapeCssUrl(value) {
+  return String(value).replace(/["\\\n\r]/g, (character) => `\\${character}`);
+}
+
 function createId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1718,6 +1765,7 @@ elements.settingsCategoriesButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openCategoriesDialog();
 });
+elements.settingsBackgroundOpacity.addEventListener("input", renderBackgroundOpacityValue);
 elements.settingsImportButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openImportDialog("json");

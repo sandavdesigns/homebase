@@ -30,6 +30,43 @@ body[data-theme="dark"] {
   --accent-ink: #091612;
 }
 
+body[data-theme="discord-dark"] {
+  --bg: #1e1f22;
+  --bg-soft: #2b2d31;
+  --panel: rgba(43, 45, 49, 0.82);
+  --panel-strong: rgba(49, 51, 56, 0.96);
+  --text: #f2f3f5;
+  --muted: #b5bac1;
+  --line: rgba(148, 155, 164, 0.2);
+  --accent: #5865f2;
+  --accent-2: #23a559;
+  --accent-3: #f0b232;
+  --accent-ink: #ffffff;
+  --danger: #f23f42;
+  --good: #23a559;
+  --warn: #f0b232;
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+}
+
+body[data-theme="discord-light"] {
+  color-scheme: light;
+  --bg: #f2f3f5;
+  --bg-soft: #ffffff;
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel-strong: rgba(255, 255, 255, 0.98);
+  --text: #2e3338;
+  --muted: #5c6470;
+  --line: rgba(6, 6, 7, 0.14);
+  --accent: #5865f2;
+  --accent-2: #23a559;
+  --accent-3: #f0b232;
+  --accent-ink: #ffffff;
+  --danger: #d83c3e;
+  --good: #187f48;
+  --warn: #9a6a00;
+  --shadow: 0 20px 52px rgba(24, 26, 31, 0.14);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -48,6 +85,26 @@ body {
     linear-gradient(220deg, color-mix(in srgb, var(--accent-2), transparent 86%), transparent 25rem),
     linear-gradient(150deg, var(--bg) 0%, var(--bg-soft) 52%, #151721 100%);
   overflow-x: hidden;
+}
+
+.custom-background {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0;
+  filter: saturate(1.08) contrast(1.02);
+}
+
+body.has-custom-background::before {
+  opacity: 0.2;
+}
+
+body.has-custom-background::after {
+  opacity: 0.11;
 }
 
 body::before,
@@ -1587,6 +1644,27 @@ dialog::backdrop {
 .settings-actions button,
 .settings-actions .button {
   width: 100%;
+}
+
+.background-settings {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.background-settings span {
+  float: right;
+  color: var(--accent-2);
+  font-weight: 850;
+}
+
+.background-settings input[type="range"] {
+  padding-inline: 0;
+  accent-color: var(--accent);
+  background: transparent;
 }
 
 .weather-settings {
