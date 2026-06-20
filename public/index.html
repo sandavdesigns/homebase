@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product5" />
+    <link rel="stylesheet" href="/styles.css?v=product6" />
   </head>
   <body>
-    <div class="custom-background" id="customBackground" aria-hidden="true"></div>
+    <div class="custom-background is-active" id="customBackgroundA" aria-hidden="true"></div>
+    <div class="custom-background" id="customBackgroundB" aria-hidden="true"></div>
     <main class="shell">
       <section class="topbar">
         <div class="brand-block">
@@ -243,13 +244,18 @@
         </label>
         <div class="background-settings">
           <label>
-            Hintergrundbild hochladen
-            <input id="settingsBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" />
+            Hintergrundbilder hochladen
+            <input id="settingsBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple />
           </label>
           <div class="background-file-row">
             <span id="settingsBackgroundStatus">Kein Bild</span>
-            <button id="removeBackgroundButton" class="subtle-button" type="button">Bild entfernen</button>
+            <button id="removeBackgroundButton" class="subtle-button" type="button">Alle entfernen</button>
           </div>
+          <div id="backgroundGallery" class="background-gallery" aria-label="Hintergrundbilder"></div>
+          <label>
+            Wechsel-Intervall <span id="settingsBackgroundIntervalValue">30s</span>
+            <input id="settingsBackgroundInterval" type="range" min="5" max="300" step="5" />
+          </label>
           <label>
             Hintergrund-Transparenz <span id="settingsBackgroundOpacityValue">35%</span>
             <input id="settingsBackgroundOpacity" type="range" min="0" max="90" step="5" />

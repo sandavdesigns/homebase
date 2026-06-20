@@ -149,7 +149,7 @@ Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt
 
 Das Theme-Dropdown wechselt zwischen `Retro`, `Time Circuit`, `Dark`, `Light`, `Terminal`, `Discord Dark` und `Discord Light`. Die Auswahl wird in `homebase.json` gespeichert.
 
-Optional kannst du in den Einstellungen ein Hintergrundbild hochladen und die Transparenz des Hintergrund-Layers per Slider regeln. Das Bild wird im Docker-Datenvolume gespeichert. Ohne hochgeladenes Bild nutzt Homebase nur das jeweilige Theme.
+Optional kannst du in den Einstellungen mehrere Hintergrundbilder hochladen, die Transparenz regeln und ein Wechsel-Intervall setzen. Die Bilder werden im Docker-Datenvolume gespeichert und auf der Startseite weich uebergeblendet. Ohne hochgeladenes Bild nutzt Homebase nur das jeweilige Theme.
 
 ## Import, Backup und Restore
 

@@ -3,7 +3,7 @@ const state = {
   title: "Homebase",
   subtitle: "",
   theme: "retro",
-  appearance: { backgroundImage: "", backgroundOpacity: 0.35 },
+  appearance: { backgroundImage: "", backgroundImages: [], backgroundOpacity: 0.35, backgroundInterval: 30 },
   activeProfileId: "default",
   profiles: [],
   categories: [],
@@ -22,7 +22,8 @@ const state = {
 const elements = {
   title: document.querySelector("#pageTitle"),
   subtitle: document.querySelector("#pageSubtitle"),
-  customBackground: document.querySelector("#customBackground"),
+  customBackgroundA: document.querySelector("#customBackgroundA"),
+  customBackgroundB: document.querySelector("#customBackgroundB"),
   date: document.querySelector("#dateLabel"),
   time: document.querySelector("#timeLabel"),
   groups: document.querySelector("#groups"),
@@ -104,6 +105,9 @@ const elements = {
   settingsSubtitle: document.querySelector("#settingsSubtitle"),
   settingsBackgroundFile: document.querySelector("#settingsBackgroundFile"),
   settingsBackgroundStatus: document.querySelector("#settingsBackgroundStatus"),
+  backgroundGallery: document.querySelector("#backgroundGallery"),
+  settingsBackgroundInterval: document.querySelector("#settingsBackgroundInterval"),
+  settingsBackgroundIntervalValue: document.querySelector("#settingsBackgroundIntervalValue"),
   settingsBackgroundOpacity: document.querySelector("#settingsBackgroundOpacity"),
   settingsBackgroundOpacityValue: document.querySelector("#settingsBackgroundOpacityValue"),
   removeBackgroundButton: document.querySelector("#removeBackgroundButton"),
@@ -153,6 +157,11 @@ let categoryDrafts = [];
 let linkMetadataTimer = null;
 let linkMetadataAbort = null;
 let compactLayoutTimer = null;
+let backgroundTimer = null;
+let backgroundIndex = 0;
+let backgroundLayer = 0;
+let backgroundSignature = "";
+let currentBackgroundUrl = "";
 
 const categoryIcons = [
   ["folder", "Ordner"],
@@ -305,11 +314,65 @@ function render() {
 }
 
 function renderAppearance() {
-  const image = normalizeBackgroundImageUrl(state.appearance?.backgroundImage || "");
+  const images = getBackgroundImages();
   const opacity = normalizeBackgroundOpacity(state.appearance?.backgroundOpacity);
-  document.body.classList.toggle("has-custom-background", Boolean(image));
-  elements.customBackground.style.backgroundImage = image ? `url("${escapeCssUrl(image)}")` : "";
-  elements.customBackground.style.opacity = String(opacity);
+  const signature = images.map((image) => image.url).join("|");
+  document.body.classList.toggle("has-custom-background", Boolean(images.length));
+  window.clearInterval(backgroundTimer);
+  backgroundTimer = null;
+
+  if (!images.length) {
+    currentBackgroundUrl = "";
+    backgroundSignature = "";
+    [elements.customBackgroundA, elements.customBackgroundB].forEach((layer) => {
+      layer.style.backgroundImage = "";
+      layer.style.opacity = "0";
+    });
+    return;
+  }
+
+  if (signature !== backgroundSignature) {
+    backgroundIndex = 0;
+    backgroundLayer = 0;
+    currentBackgroundUrl = "";
+    backgroundSignature = signature;
+  }
+
+  showBackgroundImage(images[backgroundIndex % images.length].url, opacity, false);
+  if (images.length > 1) {
+    backgroundTimer = window.setInterval(() => {
+      const nextImages = getBackgroundImages();
+      if (nextImages.length <= 1) return;
+      backgroundIndex = (backgroundIndex + 1) % nextImages.length;
+      showBackgroundImage(nextImages[backgroundIndex].url, normalizeBackgroundOpacity(state.appearance?.backgroundOpacity), true);
+    }, normalizeBackgroundInterval(state.appearance?.backgroundInterval) * 1000);
+  }
+}
+
+function showBackgroundImage(url, opacity, smooth) {
+  const layers = [elements.customBackgroundA, elements.customBackgroundB];
+  if (!url) return;
+  if (!smooth || !currentBackgroundUrl) {
+    layers[0].style.backgroundImage = `url("${escapeCssUrl(url)}")`;
+    layers[0].style.opacity = String(opacity);
+    layers[1].style.opacity = "0";
+    backgroundLayer = 0;
+    currentBackgroundUrl = url;
+    return;
+  }
+  if (url === currentBackgroundUrl) {
+    layers[backgroundLayer].style.opacity = String(opacity);
+    return;
+  }
+  const nextLayer = backgroundLayer === 0 ? 1 : 0;
+  layers[nextLayer].style.backgroundImage = `url("${escapeCssUrl(url)}")`;
+  layers[nextLayer].style.opacity = "0";
+  window.requestAnimationFrame(() => {
+    layers[nextLayer].style.opacity = String(opacity);
+    layers[backgroundLayer].style.opacity = "0";
+    backgroundLayer = nextLayer;
+    currentBackgroundUrl = url;
+  });
 }
 
 function renderAdminState() {
@@ -1037,6 +1100,9 @@ function openSettingsDialog() {
   elements.themeSelect.value = state.theme || "retro";
   elements.settingsBackgroundFile.value = "";
   renderBackgroundStatus();
+  renderBackgroundGallery();
+  elements.settingsBackgroundInterval.value = String(normalizeBackgroundInterval(state.appearance?.backgroundInterval));
+  renderBackgroundIntervalValue();
   elements.settingsBackgroundOpacity.value = String(Math.round(normalizeBackgroundOpacity(state.appearance?.backgroundOpacity) * 100));
   renderBackgroundOpacityValue();
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
@@ -1065,10 +1131,47 @@ function renderBackgroundOpacityValue() {
   elements.settingsBackgroundOpacityValue.textContent = `${elements.settingsBackgroundOpacity.value || 0}%`;
 }
 
+function renderBackgroundIntervalValue() {
+  elements.settingsBackgroundIntervalValue.textContent = `${elements.settingsBackgroundInterval.value || 0}s`;
+}
+
 function renderBackgroundStatus() {
-  const hasImage = Boolean(normalizeBackgroundImageUrl(state.appearance?.backgroundImage || ""));
-  elements.settingsBackgroundStatus.textContent = hasImage ? "Bild gespeichert" : "Kein Bild";
-  elements.removeBackgroundButton.disabled = !hasImage;
+  const count = getBackgroundImages().length;
+  elements.settingsBackgroundStatus.textContent = count ? `${count} Bild${count === 1 ? "" : "er"} gespeichert` : "Kein Bild";
+  elements.removeBackgroundButton.disabled = count === 0;
+}
+
+function renderBackgroundGallery() {
+  const images = getBackgroundImages();
+  elements.backgroundGallery.replaceChildren(
+    ...(images.length ? images.map(createBackgroundThumb) : [createBackgroundEmpty()])
+  );
+}
+
+function createBackgroundThumb(image) {
+  const item = document.createElement("div");
+  item.className = "background-thumb";
+  const preview = document.createElement("span");
+  preview.className = "background-thumb-preview";
+  preview.style.backgroundImage = `url("${escapeCssUrl(image.url)}")`;
+  const name = document.createElement("span");
+  name.className = "background-thumb-name";
+  name.textContent = image.name || "Hintergrund";
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "icon-button";
+  remove.textContent = "x";
+  remove.ariaLabel = `${image.name || "Bild"} entfernen`;
+  remove.addEventListener("click", () => removeBackgroundImage(image.id === "legacy-background" ? "" : image.id).catch((error) => showToast(error.message)));
+  item.append(preview, name, remove);
+  return item;
+}
+
+function createBackgroundEmpty() {
+  const item = document.createElement("p");
+  item.className = "empty-note";
+  item.textContent = "Noch keine Hintergrundbilder";
+  return item;
 }
 
 function openNoteComposer() {
@@ -1336,7 +1439,8 @@ async function saveSettings() {
   state.theme = elements.themeSelect.value || "retro";
   state.appearance = {
     ...(state.appearance || {}),
-    backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100)
+    backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100),
+    backgroundInterval: normalizeBackgroundInterval(elements.settingsBackgroundInterval.value)
   };
   state.preferences = {
     ...(state.preferences || {}),
@@ -1366,13 +1470,32 @@ async function saveSettings() {
   loadWeather().catch(() => {});
 }
 
+async function uploadBackgroundImages(files) {
+  const selectedFiles = Array.from(files || []);
+  if (!selectedFiles.length) return;
+  for (const file of selectedFiles) {
+    await uploadBackgroundImage(file);
+  }
+  elements.settingsBackgroundFile.value = "";
+  render();
+  if (elements.settingsDialog.open) {
+    renderBackgroundStatus();
+    renderBackgroundGallery();
+    renderBackgroundIntervalValue();
+    renderBackgroundOpacityValue();
+  }
+  showToast(`${selectedFiles.length} Bild${selectedFiles.length === 1 ? "" : "er"} gespeichert`);
+}
+
 async function uploadBackgroundImage(file) {
-  if (!file) return;
-  if (!file.type.startsWith("image/")) return showToast("Bitte eine Bilddatei wählen");
-  if (file.size > 8_000_000) return showToast("Bild ist zu groß");
-  const response = await fetch("/api/background-image", {
+  if (!file.type.startsWith("image/")) throw new Error("Bitte eine Bilddatei wählen");
+  if (file.size > 8_000_000) throw new Error(`${file.name} ist zu groß`);
+  const response = await fetch("/api/background-images", {
     method: "POST",
-    headers: { "Content-Type": file.type },
+    headers: {
+      "Content-Type": file.type,
+      "X-File-Name": encodeURIComponent(file.name)
+    },
     body: file
   });
   if (!response.ok) {
@@ -1380,25 +1503,22 @@ async function uploadBackgroundImage(file) {
     throw new Error(error.error || "Upload fehlgeschlagen");
   }
   Object.assign(state, await response.json());
-  elements.settingsBackgroundFile.value = "";
-  render();
-  if (elements.settingsDialog.open) {
-    renderBackgroundStatus();
-    renderBackgroundOpacityValue();
-  }
-  showToast("Hintergrund gespeichert");
 }
 
-async function removeBackgroundImage() {
-  const response = await fetch("/api/background-image", { method: "DELETE" });
+async function removeBackgroundImage(id = "") {
+  const url = id ? `/api/background-images?id=${encodeURIComponent(id)}` : "/api/background-image";
+  const response = await fetch(url, { method: "DELETE" });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || "Entfernen fehlgeschlagen");
   }
   Object.assign(state, await response.json());
   render();
-  if (elements.settingsDialog.open) renderBackgroundStatus();
-  showToast("Hintergrund entfernt");
+  if (elements.settingsDialog.open) {
+    renderBackgroundStatus();
+    renderBackgroundGallery();
+  }
+  showToast(id ? "Bild entfernt" : "Hintergründe entfernt");
 }
 
 function openProfileDialog() {
@@ -1661,6 +1781,7 @@ function normalizeBackgroundImageUrl(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
   if (/^\/api\/background-image(?:\?.*)?$/i.test(raw)) return raw;
+  if (/^\/api\/background-images\/[\w.-]+(?:\?.*)?$/i.test(raw)) return raw;
   const normalized = normalizeUrl(raw);
   try {
     const parsed = new URL(normalized);
@@ -1670,10 +1791,34 @@ function normalizeBackgroundImageUrl(value) {
   }
 }
 
+function getBackgroundImages() {
+  const seen = new Set();
+  const images = (Array.isArray(state.appearance?.backgroundImages) ? state.appearance.backgroundImages : [])
+    .map((image) => ({
+      id: String(image.id || image.url || createId()),
+      name: String(image.name || "Hintergrund"),
+      url: normalizeBackgroundImageUrl(image.url || image)
+    }))
+    .filter((image) => {
+      if (!image.url || seen.has(image.url)) return false;
+      seen.add(image.url);
+      return true;
+    });
+  const legacy = normalizeBackgroundImageUrl(state.appearance?.backgroundImage || "");
+  if (!images.length && legacy) images.push({ id: "legacy-background", name: "Hintergrund", url: legacy });
+  return images;
+}
+
 function normalizeBackgroundOpacity(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0.35;
   return Math.min(0.9, Math.max(0, number));
+}
+
+function normalizeBackgroundInterval(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 30;
+  return Math.min(300, Math.max(5, Math.round(number)));
 }
 
 function escapeCssUrl(value) {
@@ -1812,8 +1957,9 @@ elements.settingsCategoriesButton.addEventListener("click", () => {
   openCategoriesDialog();
 });
 elements.settingsBackgroundOpacity.addEventListener("input", renderBackgroundOpacityValue);
+elements.settingsBackgroundInterval.addEventListener("input", renderBackgroundIntervalValue);
 elements.settingsBackgroundFile.addEventListener("change", (event) => {
-  uploadBackgroundImage(event.target.files?.[0]).catch((error) => showToast(error.message));
+  uploadBackgroundImages(event.target.files).catch((error) => showToast(error.message));
 });
 elements.removeBackgroundButton.addEventListener("click", () => {
   removeBackgroundImage().catch((error) => showToast(error.message));

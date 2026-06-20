@@ -33,7 +33,9 @@ const defaultData = {
   theme: "retro",
   appearance: {
     backgroundImage: "",
-    backgroundOpacity: 0.35
+    backgroundImages: [],
+    backgroundOpacity: 0.35,
+    backgroundInterval: 30
   },
   activeProfileId: "default",
   widgets: {
@@ -180,17 +182,48 @@ function normalizeTheme(theme) {
 
 function normalizeAppearance(appearance) {
   const backgroundImage = normalizeBackgroundImage(appearance?.backgroundImage || appearance?.backgroundUrl || "");
+  const backgroundImages = normalizeBackgroundImages(appearance?.backgroundImages, backgroundImage);
   const rawOpacity = Number(appearance?.backgroundOpacity);
   const backgroundOpacity = Number.isFinite(rawOpacity)
     ? Math.min(0.9, Math.max(0, rawOpacity))
     : 0.35;
-  return { backgroundImage, backgroundOpacity };
+  const rawInterval = Number(appearance?.backgroundInterval);
+  const backgroundInterval = Number.isFinite(rawInterval)
+    ? Math.min(300, Math.max(5, Math.round(rawInterval)))
+    : 30;
+  return { backgroundImage, backgroundImages, backgroundOpacity, backgroundInterval };
+}
+
+function normalizeBackgroundImages(images, fallbackImage = "") {
+  const seen = new Set();
+  const normalized = (Array.isArray(images) ? images : [])
+    .map((image) => {
+      const url = normalizeBackgroundImage(image?.url || image);
+      const id = String(image?.id || backgroundIdFromUrl(url) || crypto.randomUUID()).slice(0, 80);
+      const name = String(image?.name || "Hintergrund").trim().slice(0, 80) || "Hintergrund";
+      return { id, name, url };
+    })
+    .filter((image) => {
+      if (!image.url || seen.has(image.url)) return false;
+      seen.add(image.url);
+      return true;
+    })
+    .slice(0, 24);
+  if (!normalized.length && fallbackImage) {
+    normalized.push({
+      id: backgroundIdFromUrl(fallbackImage) || "legacy-background",
+      name: "Hintergrund",
+      url: fallbackImage
+    });
+  }
+  return normalized;
 }
 
 function normalizeBackgroundImage(value) {
   const trimmed = String(value || "").trim().slice(0, 1000);
   if (!trimmed) return "";
   if (/^\/api\/background-image(?:\?.*)?$/i.test(trimmed)) return trimmed;
+  if (/^\/api\/background-images\/[\w.-]+(?:\?.*)?$/i.test(trimmed)) return trimmed;
   const normalized = normalizeUrl(trimmed);
   try {
     const parsed = new URL(normalized);
@@ -198,6 +231,11 @@ function normalizeBackgroundImage(value) {
   } catch {
     return "";
   }
+}
+
+function backgroundIdFromUrl(value) {
+  const match = String(value || "").match(/\/api\/background-images\/([\w-]+)/i);
+  return match ? match[1] : "";
 }
 
 function normalizeWidgets(widgets) {
@@ -508,6 +546,71 @@ function serveBackgroundImage(res) {
   fs.createReadStream(file).pipe(res);
 }
 
+function serveBackgroundGalleryImage(res, requestPath) {
+  const name = path.basename(requestPath);
+  if (!/^[-\w]+\.(png|jpe?g|webp|gif|avif)$/i.test(name)) {
+    sendJson(res, 404, { error: "Background image not found" });
+    return;
+  }
+  const file = path.join(BACKGROUND_DIR, name);
+  if (!isInsideDirectory(file, BACKGROUND_DIR) || !fs.existsSync(file)) {
+    sendJson(res, 404, { error: "Background image not found" });
+    return;
+  }
+  res.writeHead(200, {
+    "Content-Type": contentTypeForExtension(path.extname(file)),
+    "Cache-Control": "public, max-age=604800"
+  });
+  fs.createReadStream(file).pipe(res);
+}
+
+function saveBackgroundGalleryImage(buffer, contentType, originalName = "") {
+  const extension = extensionForContentType(contentType);
+  if (!extension) throw new Error("Nur PNG, JPG, WebP, GIF oder AVIF sind erlaubt");
+  if (!buffer.length) throw new Error("Bilddatei ist leer");
+
+  fs.mkdirSync(BACKGROUND_DIR, { recursive: true });
+  const id = crypto.randomUUID();
+  const filePath = path.join(BACKGROUND_DIR, `${id}${extension}`);
+  fs.writeFileSync(filePath, buffer);
+  const data = readData();
+  const image = {
+    id,
+    name: sanitizeBackgroundName(originalName) || `Hintergrund ${data.appearance?.backgroundImages?.length ? data.appearance.backgroundImages.length + 1 : 1}`,
+    url: `/api/background-images/${id}${extension}?v=${Date.now()}`
+  };
+  const backgroundImages = [...(data.appearance?.backgroundImages || []), image].slice(0, 24);
+  return writeData({
+    ...data,
+    appearance: {
+      ...(data.appearance || {}),
+      backgroundImage: data.appearance?.backgroundImage || image.url,
+      backgroundImages
+    }
+  });
+}
+
+function deleteBackgroundGalleryImage(id) {
+  const data = readData();
+  const backgroundImages = (data.appearance?.backgroundImages || []).filter((image) => image.id !== id);
+  const removed = (data.appearance?.backgroundImages || []).find((image) => image.id === id);
+  if (removed?.url) {
+    const file = filePathForBackgroundUrl(removed.url);
+    if (file && fs.existsSync(file)) fs.unlinkSync(file);
+  }
+  const nextBackgroundImage = data.appearance?.backgroundImage === removed?.url
+    ? backgroundImages[0]?.url || ""
+    : data.appearance?.backgroundImage || backgroundImages[0]?.url || "";
+  return writeData({
+    ...data,
+    appearance: {
+      ...(data.appearance || {}),
+      backgroundImage: nextBackgroundImage,
+      backgroundImages
+    }
+  });
+}
+
 function saveBackgroundImage(buffer, contentType) {
   const extension = extensionForContentType(contentType);
   if (!extension) throw new Error("Nur PNG, JPG, WebP, GIF oder AVIF sind erlaubt");
@@ -529,17 +632,37 @@ function saveBackgroundImage(buffer, contentType) {
   });
 }
 
+function filePathForBackgroundUrl(url) {
+  const match = String(url || "").match(/\/api\/background-images\/([-\w]+\.(?:png|jpe?g|webp|gif|avif))/i);
+  if (!match) return "";
+  const file = path.join(BACKGROUND_DIR, path.basename(match[1]));
+  return isInsideDirectory(file, BACKGROUND_DIR) ? file : "";
+}
+
+function isInsideDirectory(file, directory) {
+  const relative = path.relative(directory, file);
+  return Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function sanitizeBackgroundName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^\p{L}\p{N} ._-]+/gu, "")
+    .slice(0, 80);
+}
+
 function deleteBackgroundImage() {
   fs.mkdirSync(BACKGROUND_DIR, { recursive: true });
   for (const file of fs.readdirSync(BACKGROUND_DIR)) {
-    if (file.startsWith("custom-background.")) fs.unlinkSync(path.join(BACKGROUND_DIR, file));
+    if (/^(custom-background\.|[-\w]+\.(png|jpe?g|webp|gif|avif)$)/i.test(file)) fs.unlinkSync(path.join(BACKGROUND_DIR, file));
   }
   const data = readData();
   return writeData({
     ...data,
     appearance: {
       ...(data.appearance || {}),
-      backgroundImage: ""
+      backgroundImage: "",
+      backgroundImages: []
     }
   });
 }
@@ -2100,6 +2223,27 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/background-image" && req.method === "GET") {
       serveBackgroundImage(res);
+      return;
+    }
+
+    if (url.pathname.startsWith("/api/background-images/") && req.method === "GET") {
+      serveBackgroundGalleryImage(res, url.pathname);
+      return;
+    }
+
+    if (url.pathname === "/api/background-images" && req.method === "POST") {
+      if (!requireAuth(req, res)) return;
+      const body = await readBinaryRequestBody(req);
+      const filename = decodeURIComponent(String(req.headers["x-file-name"] || ""));
+      const saved = saveBackgroundGalleryImage(body, req.headers["content-type"] || "", filename);
+      sendJson(res, 200, toPublicData(saved, req));
+      return;
+    }
+
+    if (url.pathname === "/api/background-images" && req.method === "DELETE") {
+      if (!requireAuth(req, res)) return;
+      const saved = deleteBackgroundGalleryImage(String(url.searchParams.get("id") || ""));
+      sendJson(res, 200, toPublicData(saved, req));
       return;
     }
 
