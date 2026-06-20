@@ -226,6 +226,7 @@ async function saveData(message = "Gespeichert") {
       title: state.title,
       subtitle: state.subtitle,
       theme: state.theme,
+      appearance: state.appearance,
       activeProfileId: state.activeProfileId,
       widgets: state.widgets,
       preferences: state.preferences,
