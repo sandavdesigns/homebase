@@ -349,6 +349,19 @@ function renderAppearance() {
   }
 }
 
+function refreshBackgroundAfterResume() {
+  if (!getBackgroundImages().length) return;
+  window.clearInterval(backgroundTimer);
+  backgroundTimer = null;
+  backgroundSignature = "";
+  currentBackgroundUrl = "";
+  [elements.customBackgroundA, elements.customBackgroundB].forEach((layer) => {
+    layer.style.backgroundImage = "";
+    layer.style.opacity = "0";
+  });
+  window.requestAnimationFrame(renderAppearance);
+}
+
 function showBackgroundImage(url, opacity, smooth) {
   const layers = [elements.customBackgroundA, elements.customBackgroundB];
   if (!url) return;
@@ -2060,6 +2073,12 @@ window.addEventListener("resize", () => {
   if (state.preferences?.compactCategoryLayout !== true) return;
   window.clearTimeout(compactLayoutTimer);
   compactLayoutTimer = window.setTimeout(renderGroups, 120);
+});
+window.addEventListener("focus", refreshBackgroundAfterResume);
+window.addEventListener("pageshow", refreshBackgroundAfterResume);
+window.addEventListener("online", refreshBackgroundAfterResume);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshBackgroundAfterResume();
 });
 
 updateClock();
