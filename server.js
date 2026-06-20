@@ -9,6 +9,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const DATA_DIR = process.env.DATA_DIR || "/data";
 const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const FAVICON_DIR = path.join(DATA_DIR, "favicons");
+const BACKGROUND_DIR = path.join(DATA_DIR, "background");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const STATUS_TARGETS = parseStatusTargets(process.env.HOMEBASE_STATUS_TARGETS || "[]");
@@ -189,6 +190,7 @@ function normalizeAppearance(appearance) {
 function normalizeBackgroundImage(value) {
   const trimmed = String(value || "").trim().slice(0, 1000);
   if (!trimmed) return "";
+  if (/^\/api\/background-image(?:\?.*)?$/i.test(trimmed)) return trimmed;
   const normalized = normalizeUrl(trimmed);
   try {
     const parsed = new URL(normalized);
@@ -491,6 +493,84 @@ async function serveFavicon(res, targetUrl) {
   } catch {
     sendFaviconFallback(res);
   }
+}
+
+function serveBackgroundImage(res) {
+  const file = findStoredBackground();
+  if (!file) {
+    sendJson(res, 404, { error: "No background image" });
+    return;
+  }
+  res.writeHead(200, {
+    "Content-Type": contentTypeForExtension(path.extname(file)),
+    "Cache-Control": "no-cache"
+  });
+  fs.createReadStream(file).pipe(res);
+}
+
+function saveBackgroundImage(buffer, contentType) {
+  const extension = extensionForContentType(contentType);
+  if (!extension) throw new Error("Nur PNG, JPG, WebP, GIF oder AVIF sind erlaubt");
+  if (!buffer.length) throw new Error("Bilddatei ist leer");
+
+  fs.mkdirSync(BACKGROUND_DIR, { recursive: true });
+  for (const file of fs.readdirSync(BACKGROUND_DIR)) {
+    if (file.startsWith("custom-background.")) fs.unlinkSync(path.join(BACKGROUND_DIR, file));
+  }
+  const filePath = path.join(BACKGROUND_DIR, `custom-background${extension}`);
+  fs.writeFileSync(filePath, buffer);
+  const data = readData();
+  return writeData({
+    ...data,
+    appearance: {
+      ...(data.appearance || {}),
+      backgroundImage: `/api/background-image?v=${Date.now()}`
+    }
+  });
+}
+
+function deleteBackgroundImage() {
+  fs.mkdirSync(BACKGROUND_DIR, { recursive: true });
+  for (const file of fs.readdirSync(BACKGROUND_DIR)) {
+    if (file.startsWith("custom-background.")) fs.unlinkSync(path.join(BACKGROUND_DIR, file));
+  }
+  const data = readData();
+  return writeData({
+    ...data,
+    appearance: {
+      ...(data.appearance || {}),
+      backgroundImage: ""
+    }
+  });
+}
+
+function findStoredBackground() {
+  if (!fs.existsSync(BACKGROUND_DIR)) return "";
+  const file = fs.readdirSync(BACKGROUND_DIR)
+    .find((name) => /^custom-background\.(png|jpe?g|webp|gif|avif)$/i.test(name));
+  return file ? path.join(BACKGROUND_DIR, file) : "";
+}
+
+function extensionForContentType(contentType) {
+  const normalized = String(contentType || "").split(";")[0].trim().toLowerCase();
+  return {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/avif": ".avif"
+  }[normalized] || "";
+}
+
+function contentTypeForExtension(extension) {
+  return {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".avif": "image/avif"
+  }[String(extension || "").toLowerCase()] || "application/octet-stream";
 }
 
 async function fetchBestFavicon(pageUrl) {
@@ -1837,6 +1917,24 @@ function readRequestBody(req) {
   });
 }
 
+function readBinaryRequestBody(req, limit = 8_000_000) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        req.destroy();
+        reject(new Error("Bild ist zu gross. Maximal 8 MB."));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
 function serveStatic(req, res) {
   const requestPath = new URL(req.url, `http://${req.headers.host}`).pathname;
   const safePath = path.normalize(requestPath).replace(/^(\.\.[/\\])+/, "");
@@ -1997,6 +2095,26 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/weather" && req.method === "GET") {
       sendJson(res, 200, await readWeather());
+      return;
+    }
+
+    if (url.pathname === "/api/background-image" && req.method === "GET") {
+      serveBackgroundImage(res);
+      return;
+    }
+
+    if (url.pathname === "/api/background-image" && req.method === "POST") {
+      if (!requireAuth(req, res)) return;
+      const body = await readBinaryRequestBody(req);
+      const saved = saveBackgroundImage(body, req.headers["content-type"] || "");
+      sendJson(res, 200, toPublicData(saved, req));
+      return;
+    }
+
+    if (url.pathname === "/api/background-image" && req.method === "DELETE") {
+      if (!requireAuth(req, res)) return;
+      const saved = deleteBackgroundImage();
+      sendJson(res, 200, toPublicData(saved, req));
       return;
     }
 

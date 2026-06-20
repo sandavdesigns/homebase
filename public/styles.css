@@ -1656,9 +1656,21 @@ dialog::backdrop {
 }
 
 .background-settings span {
-  float: right;
   color: var(--accent-2);
   font-weight: 850;
+}
+
+.background-file-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.background-file-row span {
+  min-width: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .background-settings input[type="range"] {

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product4" />
+    <link rel="stylesheet" href="/styles.css?v=product5" />
   </head>
   <body>
     <div class="custom-background" id="customBackground" aria-hidden="true"></div>
@@ -243,9 +243,13 @@
         </label>
         <div class="background-settings">
           <label>
-            Hintergrundbild-URL
-            <input id="settingsBackgroundImage" maxlength="1000" inputmode="url" placeholder="https://.../bild.jpg" />
+            Hintergrundbild hochladen
+            <input id="settingsBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" />
           </label>
+          <div class="background-file-row">
+            <span id="settingsBackgroundStatus">Kein Bild</span>
+            <button id="removeBackgroundButton" class="subtle-button" type="button">Bild entfernen</button>
+          </div>
           <label>
             Hintergrund-Transparenz <span id="settingsBackgroundOpacityValue">35%</span>
             <input id="settingsBackgroundOpacity" type="range" min="0" max="90" step="5" />

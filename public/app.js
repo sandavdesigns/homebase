@@ -102,9 +102,11 @@ const elements = {
   settingsForm: document.querySelector("#settingsForm"),
   settingsTitle: document.querySelector("#settingsTitle"),
   settingsSubtitle: document.querySelector("#settingsSubtitle"),
-  settingsBackgroundImage: document.querySelector("#settingsBackgroundImage"),
+  settingsBackgroundFile: document.querySelector("#settingsBackgroundFile"),
+  settingsBackgroundStatus: document.querySelector("#settingsBackgroundStatus"),
   settingsBackgroundOpacity: document.querySelector("#settingsBackgroundOpacity"),
   settingsBackgroundOpacityValue: document.querySelector("#settingsBackgroundOpacityValue"),
+  removeBackgroundButton: document.querySelector("#removeBackgroundButton"),
   settingShowCategoryCounts: document.querySelector("#settingShowCategoryCounts"),
   settingCompactCategoryLayout: document.querySelector("#settingCompactCategoryLayout"),
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
@@ -1032,7 +1034,8 @@ function openSettingsDialog() {
   elements.settingsTitle.value = state.title;
   elements.settingsSubtitle.value = state.subtitle;
   elements.themeSelect.value = state.theme || "retro";
-  elements.settingsBackgroundImage.value = state.appearance?.backgroundImage || "";
+  elements.settingsBackgroundFile.value = "";
+  renderBackgroundStatus();
   elements.settingsBackgroundOpacity.value = String(Math.round(normalizeBackgroundOpacity(state.appearance?.backgroundOpacity) * 100));
   renderBackgroundOpacityValue();
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
@@ -1059,6 +1062,12 @@ function renderWeatherSettings() {
 
 function renderBackgroundOpacityValue() {
   elements.settingsBackgroundOpacityValue.textContent = `${elements.settingsBackgroundOpacity.value || 0}%`;
+}
+
+function renderBackgroundStatus() {
+  const hasImage = Boolean(normalizeBackgroundImageUrl(state.appearance?.backgroundImage || ""));
+  elements.settingsBackgroundStatus.textContent = hasImage ? "Bild gespeichert" : "Kein Bild";
+  elements.removeBackgroundButton.disabled = !hasImage;
 }
 
 function openNoteComposer() {
@@ -1326,7 +1335,6 @@ async function saveSettings() {
   state.theme = elements.themeSelect.value || "retro";
   state.appearance = {
     ...(state.appearance || {}),
-    backgroundImage: normalizeBackgroundImageUrl(elements.settingsBackgroundImage.value),
     backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100)
   };
   state.preferences = {
@@ -1355,6 +1363,41 @@ async function saveSettings() {
   await saveData("Einstellungen gespeichert");
   elements.settingsDialog.close();
   loadWeather().catch(() => {});
+}
+
+async function uploadBackgroundImage(file) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) return showToast("Bitte eine Bilddatei wählen");
+  if (file.size > 8_000_000) return showToast("Bild ist zu groß");
+  const response = await fetch("/api/background-image", {
+    method: "POST",
+    headers: { "Content-Type": file.type },
+    body: file
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || "Upload fehlgeschlagen");
+  }
+  Object.assign(state, await response.json());
+  elements.settingsBackgroundFile.value = "";
+  render();
+  if (elements.settingsDialog.open) {
+    renderBackgroundStatus();
+    renderBackgroundOpacityValue();
+  }
+  showToast("Hintergrund gespeichert");
+}
+
+async function removeBackgroundImage() {
+  const response = await fetch("/api/background-image", { method: "DELETE" });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || "Entfernen fehlgeschlagen");
+  }
+  Object.assign(state, await response.json());
+  render();
+  if (elements.settingsDialog.open) renderBackgroundStatus();
+  showToast("Hintergrund entfernt");
 }
 
 function openProfileDialog() {
@@ -1614,8 +1657,10 @@ function normalizeUrl(url) {
 }
 
 function normalizeBackgroundImageUrl(value) {
-  const normalized = normalizeUrl(String(value || ""));
-  if (!normalized) return "";
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^\/api\/background-image(?:\?.*)?$/i.test(raw)) return raw;
+  const normalized = normalizeUrl(raw);
   try {
     const parsed = new URL(normalized);
     return parsed.protocol === "http:" || parsed.protocol === "https:" ? normalized : "";
@@ -1766,6 +1811,12 @@ elements.settingsCategoriesButton.addEventListener("click", () => {
   openCategoriesDialog();
 });
 elements.settingsBackgroundOpacity.addEventListener("input", renderBackgroundOpacityValue);
+elements.settingsBackgroundFile.addEventListener("change", (event) => {
+  uploadBackgroundImage(event.target.files?.[0]).catch((error) => showToast(error.message));
+});
+elements.removeBackgroundButton.addEventListener("click", () => {
+  removeBackgroundImage().catch((error) => showToast(error.message));
+});
 elements.settingsImportButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openImportDialog("json");
