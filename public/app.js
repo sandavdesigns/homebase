@@ -28,7 +28,6 @@ const elements = {
   time: document.querySelector("#timeLabel"),
   groups: document.querySelector("#groups"),
   empty: document.querySelector("#emptyState"),
-  locked: document.querySelector("#lockedState"),
   search: document.querySelector("#searchInput"),
   searchPanel: document.querySelector("#searchPanel"),
   searchToggleButton: document.querySelector("#searchToggleButton"),
@@ -36,7 +35,6 @@ const elements = {
   addButton: document.querySelector("#addButton"),
   newNoteButton: document.querySelector("#newNoteButton"),
   settingsButton: document.querySelector("#settingsButton"),
-  adminButton: document.querySelector("#adminButton"),
   profileSelect: document.querySelector("#profileSelect"),
   newProfileButton: document.querySelector("#newProfileButton"),
   deleteProfileButton: document.querySelector("#deleteProfileButton"),
@@ -63,7 +61,6 @@ const elements = {
   setupForm: document.querySelector("#setupForm"),
   setupTitle: document.querySelector("#setupTitle"),
   setupProfileName: document.querySelector("#setupProfileName"),
-  setupPassword: document.querySelector("#setupPassword"),
   completeSetupButton: document.querySelector("#completeSetupButton"),
   editorDialog: document.querySelector("#editorDialog"),
   settingsDialog: document.querySelector("#settingsDialog"),
@@ -71,9 +68,6 @@ const elements = {
   categoriesForm: document.querySelector("#categoriesForm"),
   profileDialog: document.querySelector("#profileDialog"),
   importDialog: document.querySelector("#importDialog"),
-  adminDialog: document.querySelector("#adminDialog"),
-  adminPassword: document.querySelector("#adminPassword"),
-  adminSubmitButton: document.querySelector("#adminSubmitButton"),
   dialogTitle: document.querySelector("#dialogTitle"),
   linkForm: document.querySelector("#linkForm"),
   linkId: document.querySelector("#linkId"),
@@ -189,7 +183,7 @@ function activeProfile() {
 }
 
 function canEdit() {
-  return !state.auth?.enabled || state.auth?.authenticated;
+  return true;
 }
 
 function updateClock() {
@@ -221,10 +215,6 @@ function syncActiveProfileAliases() {
 }
 
 async function saveData(message = "Gespeichert") {
-  if (!canEdit()) {
-    openAdminDialog();
-    return;
-  }
   syncProfileFromAliases();
   const response = await fetch("/api/homebase", {
     method: "PUT",
@@ -389,14 +379,9 @@ function showBackgroundImage(url, opacity, smooth) {
 }
 
 function renderAdminState() {
-  const editable = canEdit();
-  document.body.classList.toggle("is-locked", !editable);
+  document.body.classList.remove("is-locked");
   document.body.classList.toggle("is-startpage-mode", state.preferences?.startpageMode !== false);
   document.body.classList.toggle("is-share-mode", state.preferences?.shareMode === true);
-  elements.locked.hidden = editable || state.preferences?.shareMode === true;
-  elements.adminButton.textContent = state.auth?.enabled ? (editable ? "Admin offen" : "Admin gesperrt") : "Admin aus";
-  elements.adminButton.classList.toggle("is-unlocked", editable);
-  elements.adminButton.setAttribute("aria-pressed", String(editable));
 }
 
 function renderProfiles() {
@@ -456,12 +441,18 @@ function renderWeather() {
   const condition = document.createElement("p");
   condition.className = "weather-condition";
   condition.textContent = weather.condition || "Wetter";
+  const copy = document.createElement("div");
+  copy.className = "weather-copy";
+  copy.append(temp, condition);
+  const orb = document.createElement("span");
+  orb.className = "weather-orb";
+  orb.setAttribute("aria-hidden", "true");
   const metrics = document.createElement("div");
   metrics.className = "weather-metrics";
   const values = [
-    ["Hoch/Tief", weather.high !== null && weather.low !== null ? `${weather.high}°/${weather.low}°` : "-"],
+    ["H/L", weather.high !== null && weather.low !== null ? `${weather.high}°/${weather.low}°` : "-"],
     ["Regen", weather.rainChance !== null ? `${weather.rainChance}%` : "-"],
-    ["Feuchte", weather.humidity !== null ? `${weather.humidity}%` : "-"]
+    ["Luft", weather.humidity !== null ? `${weather.humidity}%` : "-"]
   ];
   metrics.replaceChildren(...values.map(([label, value]) => {
     const item = document.createElement("span");
@@ -474,7 +465,7 @@ function renderWeather() {
   }));
   const summary = document.createElement("div");
   summary.className = "weather-summary";
-  summary.append(temp, condition);
+  summary.append(orb, copy);
   elements.weatherBody.replaceChildren(summary, metrics);
 }
 
@@ -648,7 +639,7 @@ function createNoteCard(note) {
   const text = document.createElement("p");
   text.textContent = note.text;
   const remove = document.createElement("button");
-  remove.className = "icon-button admin-only";
+  remove.className = "icon-button";
   remove.type = "button";
   remove.textContent = "x";
   remove.ariaLabel = "Notiz löschen";
@@ -834,7 +825,7 @@ function createLinkCard(link) {
   anchor.className = "link-content";
 
   const edit = document.createElement("button");
-  edit.className = "edit-link admin-only";
+  edit.className = "edit-link";
   edit.type = "button";
   edit.textContent = "...";
   edit.ariaLabel = `${link.title} bearbeiten`;
@@ -1739,7 +1730,6 @@ async function completeSetup() {
     body: JSON.stringify({
       title: elements.setupTitle.value.trim(),
       profileName: elements.setupProfileName.value.trim(),
-      password: elements.setupPassword.value,
       categories: ["Links"],
       theme: state.theme || "retro"
     })
@@ -1753,34 +1743,8 @@ async function completeSetup() {
   showToast("Homebase eingerichtet");
 }
 
-async function toggleAdmin() {
-  if (state.auth?.enabled && state.auth?.authenticated) {
-    const response = await fetch("/api/auth/logout", { method: "POST" });
-    state.auth = await response.json();
-    render();
-    showToast("Admin gesperrt");
-    return;
-  }
-  openAdminDialog();
-}
-
 function openAdminDialog() {
-  if (!state.auth?.enabled) return;
-  elements.adminPassword.value = "";
-  elements.adminDialog.showModal();
-}
-
-async function submitAdmin() {
-  const response = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: elements.adminPassword.value })
-  });
-  if (!response.ok) throw new Error("Passwort stimmt nicht");
-  state.auth = await response.json();
-  render();
-  elements.adminDialog.close();
-  showToast("Admin entsperrt");
+  showToast("Bearbeiten ist aktiv");
 }
 
 function normalizeUrl(url) {
@@ -1994,7 +1958,6 @@ elements.settingsRestoreButton.addEventListener("click", () => {
 });
 elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch((error) => showToast(error.message)));
 elements.refreshWeatherButton.addEventListener("click", () => loadWeather().catch((error) => showToast(error.message)));
-elements.adminButton.addEventListener("click", () => toggleAdmin().catch((error) => showToast(error.message)));
 elements.saveLinkButton.addEventListener("click", () => saveLink().catch((error) => showToast(error.message)));
 elements.linkForm.addEventListener("submit", (event) => {
   if (event.submitter?.value === "cancel") return;
@@ -2046,7 +2009,6 @@ elements.addNoteButton.addEventListener("click", async () => {
 });
 elements.runImportButton.addEventListener("click", () => runImport().catch((error) => showToast(error.message)));
 elements.completeSetupButton.addEventListener("click", () => completeSetup().catch((error) => showToast(error.message)));
-elements.adminSubmitButton.addEventListener("click", () => submitAdmin().catch((error) => showToast(error.message)));
 elements.commandInput.addEventListener("input", renderCommandResults);
 elements.commandForm.addEventListener("submit", (event) => {
   event.preventDefault();

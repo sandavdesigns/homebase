@@ -61,7 +61,7 @@ const defaultData = {
     openLinksInNewTab: true
   },
   admin: {
-    enabled: Boolean(ADMIN_PASSWORD)
+    enabled: false
   },
   profiles: [
     {
@@ -146,7 +146,7 @@ function normalizeData(data) {
     widgets: normalizeWidgets(data.widgets),
     preferences: normalizePreferences(data.preferences),
     admin: {
-      enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash),
+      enabled: false,
       passwordHash: String(data.admin?.passwordHash || "")
     },
     profiles,
@@ -402,22 +402,11 @@ function parseCookies(req) {
 }
 
 function isAuthed(req) {
-  const data = readDataWithoutMigration();
-  if (!ADMIN_PASSWORD && !data.admin?.passwordHash) return true;
-  const sessionId = parseCookies(req).homebase_session;
-  const session = sessionId ? sessions.get(sessionId) : null;
-  if (!session) return false;
-  if (session.expiresAt < Date.now()) {
-    sessions.delete(sessionId);
-    return false;
-  }
   return true;
 }
 
 function requireAuth(req, res) {
-  if (isAuthed(req)) return true;
-  sendJson(res, 401, { error: "Admin login required" });
-  return false;
+  return true;
 }
 
 function readDataWithoutMigration() {
@@ -449,17 +438,17 @@ function clearSessionCookie(res) {
 
 function toPublicData(data, req) {
   const { passwordHash, ...publicAdmin } = data.admin || {};
-  const authenticated = isAuthed(req);
+  const authenticated = true;
   const publicData = authenticated ? data : redactStatusSecrets(data);
   return {
     ...publicData,
     admin: {
       ...publicAdmin,
-      enabled: Boolean(ADMIN_PASSWORD || passwordHash)
+      enabled: false
     },
     auth: {
-      enabled: Boolean(ADMIN_PASSWORD || passwordHash),
-      authenticated
+      enabled: false,
+      authenticated: true
     }
   };
 }
@@ -2155,8 +2144,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/auth/status" && req.method === "GET") {
-      const data = readData();
-      sendJson(res, 200, { enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash), authenticated: isAuthed(req) });
+      sendJson(res, 200, { enabled: false, authenticated: true });
       return;
     }
 

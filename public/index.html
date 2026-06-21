@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product6" />
+    <link rel="stylesheet" href="/styles.css?v=product7" />
   </head>
   <body>
     <div class="custom-background is-active" id="customBackgroundA" aria-hidden="true"></div>
@@ -38,14 +38,13 @@
           <span>Suchen</span>
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Google-Suche" autocomplete="off" />
         </label>
-        <button class="primary admin-only" id="addButton" type="button">+ Link</button>
-        <button class="admin-only" id="newNoteButton" type="button">+ Notiz</button>
-        <button id="adminButton" type="button" aria-pressed="false">Admin gesperrt</button>
+        <button class="primary" id="addButton" type="button">+ Link</button>
+        <button id="newNoteButton" type="button">+ Notiz</button>
         <label class="compact-field command-profile">
           <span>Profil</span>
           <select id="profileSelect"></select>
         </label>
-        <button class="admin-only" id="settingsButton" type="button">Einstellungen</button>
+        <button id="settingsButton" type="button">Einstellungen</button>
       </section>
 
       <section id="widgets" class="widgets" aria-label="Widgets">
@@ -75,16 +74,11 @@
         <article class="widget notes-widget" id="notesWidget" data-widget="notes">
           <header class="widget-header">
             <p>Notizen</p>
-            <button id="addNoteButton" class="admin-only" type="button">+ Notiz</button>
+            <button id="addNoteButton" type="button">+ Notiz</button>
           </header>
           <div id="notesList" class="notes-list"></div>
           <textarea id="noteInput" rows="2" placeholder="Neue Notiz"></textarea>
         </article>
-      </section>
-
-      <section id="lockedState" class="empty" hidden>
-        <h2>Admin gesperrt</h2>
-        <p>Links sind sichtbar. Änderungen, Import und Profilverwaltung werden nach dem Entsperren aktiv.</p>
       </section>
 
       <section id="emptyState" class="empty" hidden>
@@ -107,10 +101,6 @@
         <label>
           Erstes Profil
           <input id="setupProfileName" required maxlength="60" value="Privat" />
-        </label>
-        <label>
-          Admin-Passwort
-          <input id="setupPassword" type="password" required minlength="8" autocomplete="new-password" />
         </label>
         <footer>
           <span></span>
@@ -422,26 +412,7 @@
       </form>
     </dialog>
 
-    <dialog id="adminDialog">
-      <form method="dialog" class="dialog-card" id="adminForm">
-        <header>
-          <h2 id="adminDialogTitle">Admin entsperren</h2>
-          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
-        </header>
-        <label id="adminPasswordLabel">
-          Passwort
-          <input id="adminPassword" type="password" autocomplete="current-password" />
-        </label>
-        <footer>
-          <span></span>
-          <span></span>
-          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
-          <button class="primary" id="adminSubmitButton" value="default" type="button">Entsperren</button>
-        </footer>
-      </form>
-    </dialog>
-
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=product2"></script>
+    <script src="/app.js?v=product3"></script>
   </body>
 </html>
