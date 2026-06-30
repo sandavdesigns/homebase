@@ -156,6 +156,8 @@ let backgroundIndex = 0;
 let backgroundLayer = 0;
 let backgroundSignature = "";
 let currentBackgroundUrl = "";
+let backgroundHiddenAt = 0;
+const BACKGROUND_RESUME_REFRESH_DELAY = 15000;
 
 const categoryIcons = [
   ["folder", "Ordner"],
@@ -345,10 +347,6 @@ function refreshBackgroundAfterResume() {
   backgroundTimer = null;
   backgroundSignature = "";
   currentBackgroundUrl = "";
-  [elements.customBackgroundA, elements.customBackgroundB].forEach((layer) => {
-    layer.style.backgroundImage = "";
-    layer.style.opacity = "0";
-  });
   window.requestAnimationFrame(renderAppearance);
 }
 
@@ -2036,11 +2034,18 @@ window.addEventListener("resize", () => {
   window.clearTimeout(compactLayoutTimer);
   compactLayoutTimer = window.setTimeout(renderGroups, 120);
 });
-window.addEventListener("focus", refreshBackgroundAfterResume);
-window.addEventListener("pageshow", refreshBackgroundAfterResume);
-window.addEventListener("online", refreshBackgroundAfterResume);
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) refreshBackgroundAfterResume();
+});
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) refreshBackgroundAfterResume();
+  if (document.hidden) {
+    backgroundHiddenAt = Date.now();
+    return;
+  }
+  if (backgroundHiddenAt && Date.now() - backgroundHiddenAt > BACKGROUND_RESUME_REFRESH_DELAY) {
+    refreshBackgroundAfterResume();
+  }
+  backgroundHiddenAt = 0;
 });
 
 updateClock();
