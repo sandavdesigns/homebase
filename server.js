@@ -14,6 +14,7 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const STATUS_TARGETS = parseStatusTargets(process.env.HOMEBASE_STATUS_TARGETS || "[]");
 const sessions = new Map();
+const categoryColors = ["#35f0ff", "#56ff8f", "#ffb238", "#ff4f7a", "#c471ff", "#4aa8ff", "#ff6f3c"];
 
 const defaultCategories = [
   ["Business", "briefcase", "#ffb238"],
@@ -116,6 +117,9 @@ function writeData(data) {
 }
 
 function normalizeData(data) {
+  if (isHomarrData(data)) {
+    return normalizeData(convertHomarrData(data));
+  }
   const title = String(data.title || "Startseite").slice(0, 80);
   const subtitle = String(data.subtitle || "").slice(0, 140);
   const rawProfiles = Array.isArray(data.profiles) && data.profiles.length
@@ -153,6 +157,112 @@ function normalizeData(data) {
     categories: activeProfile.categories,
     links: activeProfile.links
   };
+}
+
+function isHomarrData(data) {
+  return Array.isArray(data?.apps) && Array.isArray(data?.categories) && !Array.isArray(data?.profiles);
+}
+
+function convertHomarrData(data) {
+  const categories = parseHomarrCategories(data);
+  const links = parseHomarrLinks(data, categories);
+  const profileId = crypto.randomUUID();
+  return {
+    schemaVersion: 5,
+    setupComplete: true,
+    title: String(data.configProperties?.name || data.name || "Homarr").slice(0, 80),
+    subtitle: "",
+    theme: "retro",
+    appearance: defaultData.appearance,
+    activeProfileId: profileId,
+    widgets: defaultData.widgets,
+    preferences: defaultData.preferences,
+    admin: { enabled: false },
+    profiles: [
+      {
+        id: profileId,
+        name: String(data.configProperties?.name || data.name || "Homarr").slice(0, 50),
+        categories: categories.map((category, index) => ({
+          id: crypto.randomUUID(),
+          name: category.name,
+          icon: inferHomarrCategoryIcon(category.name),
+          color: categoryColors[index % categoryColors.length]
+        })),
+        links
+      }
+    ]
+  };
+}
+
+function parseHomarrCategories(data) {
+  const categories = data.categories
+    .map((category, index) => ({
+      homarrId: String(category.id || ""),
+      name: String(category.name || "").trim(),
+      position: Number.isFinite(Number(category.position)) ? Number(category.position) : index
+    }))
+    .filter((category) => category.homarrId && category.name)
+    .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "de", { sensitivity: "base" }));
+  if (!categories.length) categories.push({ homarrId: "homarr-default", name: "Homarr", position: 0 });
+  return categories;
+}
+
+function parseHomarrLinks(data, categories) {
+  const categoryById = new Map(categories.map((category) => [category.homarrId, category.name]));
+  const knownKeys = new Set();
+  return data.apps
+    .map((app, index) => {
+      const url = normalizeUrl(String(app.behaviour?.externalUrl || app.behaviour?.onClickUrl || app.url || "").trim());
+      const category = homarrAppCategoryName(app, categoryById);
+      const position = homarrAppPosition(app, index);
+      return {
+        id: crypto.randomUUID(),
+        title: String(app.name || url || "Homarr Link").trim().slice(0, 80),
+        url,
+        category,
+        note: "",
+        position,
+        statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
+      };
+    })
+    .filter((link) => {
+      if (!link.url || !/^https?:\/\//i.test(link.url)) return false;
+      const key = `${link.url}::${link.title.toLowerCase().replace(/[^a-z0-9]+/g, "")}`;
+      if (knownKeys.has(key)) return false;
+      knownKeys.add(key);
+      return true;
+    })
+    .sort((a, b) => a.category.localeCompare(b.category, "de", { sensitivity: "base" }) || a.position - b.position || a.title.localeCompare(b.title, "de", { sensitivity: "base" }))
+    .map(({ position, ...link }) => link);
+}
+
+function homarrAppCategoryName(app, categoryById) {
+  const areaType = String(app.area?.type || "").toLowerCase();
+  const categoryId = String(app.area?.properties?.id || "");
+  if (areaType === "category" && categoryById.has(categoryId)) return categoryById.get(categoryId);
+  if (areaType === "sidebar") return "Sidebar";
+  return "Homarr";
+}
+
+function homarrAppPosition(app, fallback) {
+  for (const location of [app.shape?.lg?.location, app.shape?.md?.location, app.shape?.sm?.location]) {
+    const x = Number(location?.x);
+    const y = Number(location?.y);
+    if (Number.isFinite(x) && Number.isFinite(y)) return y * 100 + x;
+  }
+  return fallback;
+}
+
+function inferHomarrCategoryIcon(name) {
+  const normalized = String(name || "").toLowerCase();
+  if (/(server|nas|idrac|ilo|vmware|proxmox)/.test(normalized)) return "server";
+  if (/(internet|netz|switch|router|firewall)/.test(normalized)) return "network";
+  if (/(medien|media|video|photo|foto)/.test(normalized)) return "media";
+  if (/(smart|home|haus)/.test(normalized)) return "home";
+  if (/(sicher|security|vault|passwort)/.test(normalized)) return "shield";
+  if (/(werk|tool|tools|util|nutz)/.test(normalized)) return "tool";
+  if (/(business|shop|rechnung|daily|täglich|taeglich)/.test(normalized)) return "briefcase";
+  return "folder";
 }
 
 function normalizeProfile(profile) {

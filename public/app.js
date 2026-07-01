@@ -1655,6 +1655,12 @@ async function runImport() {
     showToast(`${count} Homarr-Links importiert`);
     return;
   }
+  if (mode === "json" && isHomarrJson(text)) {
+    const count = await importHomarr(text);
+    elements.importDialog.close();
+    showToast(`${count} Homarr-Links importiert`);
+    return;
+  }
   if (mode === "restore" && !window.confirm("Backup wirklich wiederherstellen? Die aktuelle Konfiguration wird ersetzt.")) return;
   const response = await fetch("/api/import", {
     method: "POST",
@@ -1667,6 +1673,15 @@ async function runImport() {
   render();
   elements.importDialog.close();
   showToast("Importiert");
+}
+
+function isHomarrJson(text) {
+  try {
+    const board = JSON.parse(text);
+    return Array.isArray(board?.apps) && Array.isArray(board?.categories) && !Array.isArray(board?.profiles);
+  } catch {
+    return false;
+  }
 }
 
 async function importHomarr(text) {
