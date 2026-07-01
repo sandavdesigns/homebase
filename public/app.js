@@ -3,7 +3,7 @@ const state = {
   title: "Homebase",
   subtitle: "",
   theme: "retro",
-  appearance: { backgroundImage: "", backgroundImages: [], backgroundOpacity: 0.35, backgroundInterval: 30 },
+  appearance: { backgroundImage: "", backgroundImages: [], backgroundOpacity: 0.35, backgroundInterval: 30, linkTransparency: 72, categoryTransparency: 58 },
   activeProfileId: "default",
   profiles: [],
   categories: [],
@@ -104,6 +104,10 @@ const elements = {
   settingsBackgroundIntervalValue: document.querySelector("#settingsBackgroundIntervalValue"),
   settingsBackgroundOpacity: document.querySelector("#settingsBackgroundOpacity"),
   settingsBackgroundOpacityValue: document.querySelector("#settingsBackgroundOpacityValue"),
+  settingsLinkTransparency: document.querySelector("#settingsLinkTransparency"),
+  settingsLinkTransparencyValue: document.querySelector("#settingsLinkTransparencyValue"),
+  settingsCategoryTransparency: document.querySelector("#settingsCategoryTransparency"),
+  settingsCategoryTransparencyValue: document.querySelector("#settingsCategoryTransparencyValue"),
   removeBackgroundButton: document.querySelector("#removeBackgroundButton"),
   settingShowCategoryCounts: document.querySelector("#settingShowCategoryCounts"),
   settingCompactCategoryLayout: document.querySelector("#settingCompactCategoryLayout"),
@@ -309,6 +313,7 @@ function render() {
 function renderAppearance() {
   const images = getBackgroundImages();
   const opacity = normalizeBackgroundOpacity(state.appearance?.backgroundOpacity);
+  applyGlassTransparency();
   const signature = images.map((image) => image.url).join("|");
   document.body.classList.toggle("has-custom-background", Boolean(images.length));
   window.clearInterval(backgroundTimer);
@@ -340,6 +345,30 @@ function renderAppearance() {
       showBackgroundImage(nextImages[backgroundIndex].url, normalizeBackgroundOpacity(state.appearance?.backgroundOpacity), true);
     }, normalizeBackgroundInterval(state.appearance?.backgroundInterval) * 1000);
   }
+}
+
+function applyGlassTransparency() {
+  const linkTransparency = normalizeTransparency(state.appearance?.linkTransparency, 72);
+  const categoryTransparency = normalizeTransparency(state.appearance?.categoryTransparency, 58);
+  const linkFill = (100 - linkTransparency) / 100;
+  const categoryFill = (100 - categoryTransparency) / 100;
+
+  document.body.style.setProperty("--button-glass-alpha", formatAlpha(0.82 * linkFill));
+  document.body.style.setProperty("--button-glass-hover-alpha", formatAlpha(0.94 * linkFill));
+  document.body.style.setProperty("--primary-button-transparency", `${Math.min(88, Math.max(0, Math.round(linkTransparency * 0.82)))}%`);
+  document.body.style.setProperty("--link-glass-white", formatAlpha(0.42 * linkFill));
+  document.body.style.setProperty("--link-glass-white-soft", formatAlpha(0.12 * linkFill));
+  document.body.style.setProperty("--link-glass-dark", formatAlpha(0.28 * linkFill));
+  document.body.style.setProperty("--link-glass-shine", formatAlpha(0.3 * linkFill));
+  document.body.style.setProperty("--link-glass-overlay", formatAlpha(0.58 * linkFill));
+  document.body.style.setProperty("--category-glass-alpha", formatAlpha(0.78 * categoryFill));
+  document.body.style.setProperty("--category-glass-top", formatAlpha(0.18 * categoryFill));
+  document.body.style.setProperty("--category-glass-sweep", formatAlpha(0.16 * categoryFill));
+  document.body.style.setProperty("--category-glass-shadow", formatAlpha(0.28 * categoryFill));
+}
+
+function formatAlpha(value) {
+  return Math.min(1, Math.max(0, value)).toFixed(3);
 }
 
 function refreshBackgroundAfterResume() {
@@ -1108,6 +1137,10 @@ function openSettingsDialog() {
   renderBackgroundIntervalValue();
   elements.settingsBackgroundOpacity.value = String(Math.round(normalizeBackgroundOpacity(state.appearance?.backgroundOpacity) * 100));
   renderBackgroundOpacityValue();
+  elements.settingsLinkTransparency.value = String(normalizeTransparency(state.appearance?.linkTransparency, 72));
+  renderLinkTransparencyValue();
+  elements.settingsCategoryTransparency.value = String(normalizeTransparency(state.appearance?.categoryTransparency, 58));
+  renderCategoryTransparencyValue();
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
   elements.settingCompactCategoryLayout.checked = state.preferences?.compactCategoryLayout === true;
   elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
@@ -1132,6 +1165,14 @@ function renderWeatherSettings() {
 
 function renderBackgroundOpacityValue() {
   elements.settingsBackgroundOpacityValue.textContent = `${elements.settingsBackgroundOpacity.value || 0}%`;
+}
+
+function renderLinkTransparencyValue() {
+  elements.settingsLinkTransparencyValue.textContent = `${elements.settingsLinkTransparency.value || 0}%`;
+}
+
+function renderCategoryTransparencyValue() {
+  elements.settingsCategoryTransparencyValue.textContent = `${elements.settingsCategoryTransparency.value || 0}%`;
 }
 
 function renderBackgroundIntervalValue() {
@@ -1443,7 +1484,9 @@ async function saveSettings() {
   state.appearance = {
     ...(state.appearance || {}),
     backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100),
-    backgroundInterval: normalizeBackgroundInterval(elements.settingsBackgroundInterval.value)
+    backgroundInterval: normalizeBackgroundInterval(elements.settingsBackgroundInterval.value),
+    linkTransparency: normalizeTransparency(elements.settingsLinkTransparency.value, 72),
+    categoryTransparency: normalizeTransparency(elements.settingsCategoryTransparency.value, 58)
   };
   state.preferences = {
     ...(state.preferences || {}),
@@ -1935,6 +1978,12 @@ function normalizeBackgroundInterval(value) {
   return Math.min(300, Math.max(5, Math.round(number)));
 }
 
+function normalizeTransparency(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(90, Math.max(0, Math.round(number)));
+}
+
 function escapeCssUrl(value) {
   return String(value).replace(/["\\\n\r]/g, (character) => `\\${character}`);
 }
@@ -2072,6 +2121,16 @@ elements.settingsCategoriesButton.addEventListener("click", () => {
 });
 elements.settingsBackgroundOpacity.addEventListener("input", renderBackgroundOpacityValue);
 elements.settingsBackgroundInterval.addEventListener("input", renderBackgroundIntervalValue);
+elements.settingsLinkTransparency.addEventListener("input", () => {
+  renderLinkTransparencyValue();
+  state.appearance = { ...(state.appearance || {}), linkTransparency: normalizeTransparency(elements.settingsLinkTransparency.value, 72) };
+  applyGlassTransparency();
+});
+elements.settingsCategoryTransparency.addEventListener("input", () => {
+  renderCategoryTransparencyValue();
+  state.appearance = { ...(state.appearance || {}), categoryTransparency: normalizeTransparency(elements.settingsCategoryTransparency.value, 58) };
+  applyGlassTransparency();
+});
 elements.settingsBackgroundFile.addEventListener("change", (event) => {
   uploadBackgroundImages(event.target.files).catch((error) => showToast(error.message));
 });

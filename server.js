@@ -36,7 +36,9 @@ const defaultData = {
     backgroundImage: "",
     backgroundImages: [],
     backgroundOpacity: 0.35,
-    backgroundInterval: 30
+    backgroundInterval: 30,
+    linkTransparency: 72,
+    categoryTransparency: 58
   },
   activeProfileId: "default",
   widgets: {
@@ -301,7 +303,15 @@ function normalizeAppearance(appearance) {
   const backgroundInterval = Number.isFinite(rawInterval)
     ? Math.min(300, Math.max(5, Math.round(rawInterval)))
     : 30;
-  return { backgroundImage, backgroundImages, backgroundOpacity, backgroundInterval };
+  const linkTransparency = normalizeTransparency(appearance?.linkTransparency, 72);
+  const categoryTransparency = normalizeTransparency(appearance?.categoryTransparency, 58);
+  return { backgroundImage, backgroundImages, backgroundOpacity, backgroundInterval, linkTransparency, categoryTransparency };
+}
+
+function normalizeTransparency(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(90, Math.max(0, Math.round(number)));
 }
 
 function normalizeBackgroundImages(images, fallbackImage = "") {
