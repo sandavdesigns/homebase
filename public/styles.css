@@ -102,11 +102,11 @@ body {
 }
 
 body.has-custom-background::before {
-  opacity: 0.2;
+  opacity: 0.13;
 }
 
 body.has-custom-background::after {
-  opacity: 0.11;
+  opacity: 0.07;
 }
 
 body::before,
@@ -1085,13 +1085,14 @@ textarea:focus {
   border-radius: 8px;
   padding: 12px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent), transparent 92%), transparent 34%),
-    color-mix(in srgb, var(--panel), transparent 28%);
+    linear-gradient(180deg, color-mix(in srgb, var(--accent), transparent 96%), transparent 34%),
+    color-mix(in srgb, var(--panel), transparent 58%);
   box-shadow:
-    var(--shadow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 54px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 0 28px color-mix(in srgb, var(--accent), transparent 94%);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
   overflow: hidden;
 }
 
@@ -1099,7 +1100,7 @@ textarea:focus {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.12;
+  opacity: 0.08;
   pointer-events: none;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--category-color, var(--accent)), transparent 70%), transparent);
   transform: translateX(-78%);
@@ -1221,22 +1222,22 @@ body[data-theme="time-circuit"] .group h2 {
   gap: 0;
   align-items: stretch;
   min-height: 68px;
-  border: 1px solid color-mix(in srgb, var(--category-color, var(--accent)), transparent 62%);
+  border: 1px solid color-mix(in srgb, var(--category-color, var(--accent)), transparent 50%);
   border-radius: 8px;
   padding: 0;
   color: inherit;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.055) 42%, rgba(255, 255, 255, 0.018)),
-    radial-gradient(circle at 12% 0, color-mix(in srgb, var(--category-color, var(--accent)), transparent 56%), transparent 48%),
-    linear-gradient(135deg, rgba(8, 10, 18, 0.18), rgba(8, 10, 18, 0.05));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.045) 38%, rgba(255, 255, 255, 0.01)),
+    radial-gradient(circle at 12% 0, color-mix(in srgb, var(--category-color, var(--accent)), transparent 66%), transparent 48%),
+    linear-gradient(135deg, rgba(8, 10, 18, 0.055), rgba(8, 10, 18, 0.015));
   text-decoration: none;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -18px 34px rgba(255, 255, 255, 0.045),
-    0 10px 26px rgba(0, 0, 0, 0.11);
+    inset 0 -18px 34px rgba(255, 255, 255, 0.025),
+    0 10px 26px rgba(0, 0, 0, 0.07);
   overflow: hidden;
-  backdrop-filter: blur(20px) saturate(1.28) brightness(1.08);
-  -webkit-backdrop-filter: blur(20px) saturate(1.28) brightness(1.08);
+  backdrop-filter: blur(24px) saturate(1.45) brightness(1.12);
+  -webkit-backdrop-filter: blur(24px) saturate(1.45) brightness(1.12);
   transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
@@ -1259,9 +1260,9 @@ body[data-theme="time-circuit"] .group h2 {
 body[data-theme="time-circuit"] .link-card {
   border-color: rgba(255, 178, 56, 0.34);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.17), rgba(255, 178, 56, 0.04) 42%, rgba(255, 52, 47, 0.025)),
-    radial-gradient(circle at 12% 0, rgba(86, 255, 143, 0.26), transparent 48%),
-    linear-gradient(135deg, rgba(12, 8, 8, 0.18), rgba(12, 8, 8, 0.045));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 178, 56, 0.025) 42%, rgba(255, 52, 47, 0.012)),
+    radial-gradient(circle at 12% 0, rgba(86, 255, 143, 0.18), transparent 48%),
+    linear-gradient(135deg, rgba(12, 8, 8, 0.055), rgba(12, 8, 8, 0.014));
   box-shadow:
     inset 0 1px 0 rgba(255, 244, 220, 0.2),
     inset 0 -18px 34px rgba(255, 178, 56, 0.035),
@@ -1281,10 +1282,10 @@ body[data-theme="time-circuit"] .link-card:hover {
   content: "";
   position: absolute;
   inset: -1px;
-  opacity: 0.2;
+  opacity: 0.13;
   background:
-    linear-gradient(110deg, transparent 0 22%, rgba(255, 255, 255, 0.4) 42%, transparent 60%),
-    linear-gradient(135deg, color-mix(in srgb, var(--category-color, var(--accent)), transparent 70%), transparent 58%);
+    linear-gradient(110deg, transparent 0 22%, rgba(255, 255, 255, 0.32) 42%, transparent 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--category-color, var(--accent)), transparent 78%), transparent 58%);
   transform: translateX(-48%);
   transition: opacity 150ms ease, transform 420ms ease;
 }
@@ -1297,9 +1298,9 @@ body[data-theme="time-circuit"] .link-card:hover {
   border-radius: 7px;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 38%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.11), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.06));
-  opacity: 0.82;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 36%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.04));
+  opacity: 0.58;
 }
 
 .link-card > * {
@@ -1311,9 +1312,9 @@ body[data-theme="time-circuit"] .link-card:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--category-color, var(--accent)), transparent 36%);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.09) 42%, rgba(255, 255, 255, 0.028)),
-    radial-gradient(circle at 12% 0, color-mix(in srgb, var(--category-color, var(--accent)), transparent 46%), transparent 50%),
-    linear-gradient(135deg, rgba(8, 10, 18, 0.15), rgba(8, 10, 18, 0.035));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.07) 42%, rgba(255, 255, 255, 0.018)),
+    radial-gradient(circle at 12% 0, color-mix(in srgb, var(--category-color, var(--accent)), transparent 58%), transparent 50%),
+    linear-gradient(135deg, rgba(8, 10, 18, 0.075), rgba(8, 10, 18, 0.02));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.32),
     0 0 0 1px color-mix(in srgb, var(--category-color, var(--accent)), transparent 76%),
@@ -1379,10 +1380,15 @@ body[data-theme="time-circuit"] .link-title {
   display: grid;
   gap: 6px;
   margin: 8px 0 0;
-  border: 1px solid color-mix(in srgb, var(--service-glow, var(--accent)), transparent 68%);
+  border: 1px solid color-mix(in srgb, var(--service-glow, var(--accent)), transparent 58%);
   border-radius: 8px;
   padding: 8px 9px;
-  background: color-mix(in srgb, var(--service-glow, var(--accent)), transparent 91%);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.035)),
+    color-mix(in srgb, var(--service-glow, var(--accent)), transparent 94%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
   cursor: pointer;
 }
 
@@ -1435,7 +1441,7 @@ body[data-theme="time-circuit"] .link-title {
   border-radius: 999px;
   padding: 2px 6px;
   color: var(--muted);
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.1);
   font-size: 0.74rem;
   font-weight: 650;
   white-space: nowrap;
@@ -1459,14 +1465,14 @@ body[data-theme="time-circuit"] .link-title {
   border-radius: 999px;
   padding: 4px 10px;
   color: var(--muted);
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.1);
   font-size: 0.74rem;
   font-weight: 800;
 }
 
 .ha-control.is-on {
   color: var(--good);
-  background: color-mix(in srgb, var(--good), transparent 86%);
+  background: color-mix(in srgb, var(--good), transparent 91%);
 }
 
 .ha-control:disabled {
