@@ -1215,23 +1215,28 @@ body[data-theme="time-circuit"] .group h2 {
 
 .link-card {
   position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
   min-height: 68px;
-  border: 1px solid color-mix(in srgb, var(--category-color, var(--accent)), transparent 86%);
+  border: 1px solid color-mix(in srgb, var(--category-color, var(--accent)), transparent 74%);
   border-radius: 8px;
   padding: 0;
   color: inherit;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.045)),
-    color-mix(in srgb, var(--panel-strong), transparent 38%);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055) 42%, rgba(255, 255, 255, 0.025)),
+    radial-gradient(circle at 14% 0, color-mix(in srgb, var(--category-color, var(--accent)), transparent 68%), transparent 46%),
+    color-mix(in srgb, var(--panel-strong), transparent 58%);
   text-decoration: none;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 10px 24px rgba(0, 0, 0, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -18px 34px rgba(255, 255, 255, 0.035),
+    0 10px 26px rgba(0, 0, 0, 0.13);
   overflow: hidden;
+  backdrop-filter: blur(14px) saturate(1.18);
+  -webkit-backdrop-filter: blur(14px) saturate(1.18);
   transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
@@ -1252,14 +1257,16 @@ body[data-theme="time-circuit"] .group h2 {
 }
 
 body[data-theme="time-circuit"] .link-card {
-  border-color: rgba(255, 178, 56, 0.08);
+  border-color: rgba(255, 178, 56, 0.2);
   background:
-    linear-gradient(135deg, rgba(86, 255, 143, 0.085), rgba(255, 52, 47, 0.065)),
-    color-mix(in srgb, var(--panel-strong), transparent 30%);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 178, 56, 0.045) 42%, rgba(255, 52, 47, 0.038)),
+    radial-gradient(circle at 14% 0, rgba(86, 255, 143, 0.18), transparent 46%),
+    color-mix(in srgb, var(--panel-strong), transparent 55%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 178, 56, 0.08),
+    inset 0 1px 0 rgba(255, 244, 220, 0.2),
+    inset 0 -18px 34px rgba(255, 178, 56, 0.035),
     0 10px 24px rgba(0, 0, 0, 0.18),
-    0 0 16px rgba(86, 255, 143, 0.045);
+    0 0 16px rgba(86, 255, 143, 0.07);
 }
 
 body[data-theme="time-circuit"] .link-card:hover {
@@ -1274,12 +1281,25 @@ body[data-theme="time-circuit"] .link-card:hover {
   content: "";
   position: absolute;
   inset: -1px;
-  opacity: 0;
+  opacity: 0.12;
   background:
-    linear-gradient(110deg, transparent 0 28%, color-mix(in srgb, var(--accent), transparent 58%) 44%, transparent 58%),
-    linear-gradient(135deg, color-mix(in srgb, var(--accent), transparent 74%), color-mix(in srgb, var(--accent-2), transparent 82%));
-  transform: translateX(-42%);
+    linear-gradient(110deg, transparent 0 24%, rgba(255, 255, 255, 0.28) 42%, transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--category-color, var(--accent)), transparent 78%), transparent 58%);
+  transform: translateX(-48%);
   transition: opacity 150ms ease, transform 420ms ease;
+}
+
+.link-card::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  border-radius: 7px;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 38%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.035));
+  opacity: 0.72;
 }
 
 .link-card > * {
@@ -1289,19 +1309,21 @@ body[data-theme="time-circuit"] .link-card:hover {
 
 .link-card:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--category-color, var(--accent)), transparent 34%);
+  border-color: color-mix(in srgb, var(--category-color, var(--accent)), transparent 36%);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06)),
-    color-mix(in srgb, var(--panel-strong), transparent 26%);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.075) 42%, rgba(255, 255, 255, 0.035)),
+    radial-gradient(circle at 14% 0, color-mix(in srgb, var(--category-color, var(--accent)), transparent 58%), transparent 48%),
+    color-mix(in srgb, var(--panel-strong), transparent 50%);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent), transparent 78%),
-    0 0 22px color-mix(in srgb, var(--accent), transparent 82%),
-    0 16px 34px rgba(0, 0, 0, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--category-color, var(--accent)), transparent 76%),
+    0 0 26px color-mix(in srgb, var(--category-color, var(--accent)), transparent 78%),
+    0 18px 38px rgba(0, 0, 0, 0.24);
 }
 
 .link-card:hover::before {
-  opacity: 0.22;
-  transform: translateX(28%);
+  opacity: 0.3;
+  transform: translateX(32%);
 }
 
 .link-content {
