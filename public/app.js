@@ -355,16 +355,20 @@ function applyGlassTransparency() {
 
   document.body.style.setProperty("--button-glass-alpha", formatAlpha(0.82 * linkFill));
   document.body.style.setProperty("--button-glass-hover-alpha", formatAlpha(0.94 * linkFill));
-  document.body.style.setProperty("--primary-button-transparency", `${Math.min(88, Math.max(0, Math.round(linkTransparency * 0.82)))}%`);
+  document.body.style.setProperty("--button-glass-blur", `${Math.round(18 * linkFill)}px`);
+  document.body.style.setProperty("--primary-button-transparency", `${linkTransparency}%`);
   document.body.style.setProperty("--link-glass-white", formatAlpha(0.42 * linkFill));
   document.body.style.setProperty("--link-glass-white-soft", formatAlpha(0.12 * linkFill));
   document.body.style.setProperty("--link-glass-dark", formatAlpha(0.28 * linkFill));
   document.body.style.setProperty("--link-glass-shine", formatAlpha(0.3 * linkFill));
   document.body.style.setProperty("--link-glass-overlay", formatAlpha(0.58 * linkFill));
+  document.body.style.setProperty("--link-glass-accent", formatAlpha(0.34 * linkFill));
+  document.body.style.setProperty("--link-glass-blur", `${Math.round(24 * linkFill)}px`);
   document.body.style.setProperty("--category-glass-alpha", formatAlpha(0.78 * categoryFill));
   document.body.style.setProperty("--category-glass-top", formatAlpha(0.18 * categoryFill));
   document.body.style.setProperty("--category-glass-sweep", formatAlpha(0.16 * categoryFill));
   document.body.style.setProperty("--category-glass-shadow", formatAlpha(0.28 * categoryFill));
+  document.body.style.setProperty("--category-glass-blur", `${Math.round(18 * categoryFill)}px`);
 }
 
 function formatAlpha(value) {
@@ -1981,7 +1985,7 @@ function normalizeBackgroundInterval(value) {
 function normalizeTransparency(value, fallback) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
-  return Math.min(90, Math.max(0, Math.round(number)));
+  return Math.min(100, Math.max(0, Math.round(number)));
 }
 
 function escapeCssUrl(value) {

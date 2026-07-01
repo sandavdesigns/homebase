@@ -311,7 +311,7 @@ function normalizeAppearance(appearance) {
 function normalizeTransparency(value, fallback) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
-  return Math.min(90, Math.max(0, Math.round(number)));
+  return Math.min(100, Math.max(0, Math.round(number)));
 }
 
 function normalizeBackgroundImages(images, fallbackImage = "") {
