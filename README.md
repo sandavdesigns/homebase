@@ -171,6 +171,12 @@ Browser-Bookmarks:
 - Homebase liest Ordner als Kategorien und Lesezeichen als Links ein.
 - Pruefe nach dem Import Kategorien, Dubletten und fehlende URLs.
 
+Homarr-Board:
+
+- JSON-Export aus Homarr waehlen, zum Beispiel `SWGN_01.json`.
+- Homebase importiert Homarr-Kategorien als Kategorien und Apps als Links in ein neues Profil.
+- Homarr-Icon-URLs werden nicht uebernommen. Die Link-Bilder kommen wie gewohnt ueber die Favicons der Zielseiten.
+
 Die Datei liegt im Container unter:
 
 ```text

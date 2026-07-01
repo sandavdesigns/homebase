@@ -123,6 +123,7 @@ const elements = {
   settingsCategoriesButton: document.querySelector("#settingsCategoriesButton"),
   createDemoButton: document.querySelector("#createDemoButton"),
   settingsBookmarkImportButton: document.querySelector("#settingsBookmarkImportButton"),
+  settingsHomarrImportButton: document.querySelector("#settingsHomarrImportButton"),
   settingsImportButton: document.querySelector("#settingsImportButton"),
   settingsBackupButton: document.querySelector("#settingsBackupButton"),
   settingsRestoreButton: document.querySelector("#settingsRestoreButton"),
@@ -1609,6 +1610,12 @@ function openImportDialog(mode = "json") {
       button: "Bookmarks importieren",
       accept: "text/html,.html,.htm",
       placeholder: "<!DOCTYPE NETSCAPE-Bookmark-file-1>"
+    },
+    homarr: {
+      title: "Homarr-Board importieren",
+      button: "Homarr importieren",
+      accept: "application/json,.json",
+      placeholder: "{\"schemaVersion\":2,\"categories\":[...],\"apps\":[...]}"
     }
   }[mode] || {};
   elements.importMode.value = mode;
@@ -1642,6 +1649,12 @@ async function runImport() {
     showToast(`${count} Bookmarks importiert`);
     return;
   }
+  if (mode === "homarr") {
+    const count = await importHomarr(text);
+    elements.importDialog.close();
+    showToast(`${count} Homarr-Links importiert`);
+    return;
+  }
   if (mode === "restore" && !window.confirm("Backup wirklich wiederherstellen? Die aktuelle Konfiguration wird ersetzt.")) return;
   const response = await fetch("/api/import", {
     method: "POST",
@@ -1654,6 +1667,117 @@ async function runImport() {
   render();
   elements.importDialog.close();
   showToast("Importiert");
+}
+
+async function importHomarr(text) {
+  let board;
+  try {
+    board = JSON.parse(text);
+  } catch {
+    throw new Error("Homarr-JSON konnte nicht gelesen werden");
+  }
+  const categories = parseHomarrCategories(board);
+  const links = parseHomarrApps(board, categories);
+  if (!links.length) throw new Error("Keine Homarr-Apps mit URL gefunden");
+  const profileName = uniqueProfileName(String(board.configProperties?.name || board.name || "Homarr").trim() || "Homarr");
+  const profile = {
+    id: createId(),
+    name: profileName,
+    categories: categories.map((category, index) => ({
+      id: createId(),
+      name: category.name,
+      icon: inferCategoryIcon(category.name),
+      color: categoryColors[index % categoryColors.length]
+    })),
+    links
+  };
+  state.profiles.push(profile);
+  state.activeProfileId = profile.id;
+  syncActiveProfileAliases();
+  await saveData("Homarr importiert");
+  return links.length;
+}
+
+function parseHomarrCategories(board) {
+  const rawCategories = Array.isArray(board?.categories) ? board.categories : [];
+  const categories = rawCategories
+    .map((category, index) => ({
+      homarrId: String(category.id || ""),
+      name: String(category.name || "").trim(),
+      position: Number.isFinite(Number(category.position)) ? Number(category.position) : index
+    }))
+    .filter((category) => category.homarrId && category.name)
+    .sort((a, b) => a.position - b.position || compareNames(a.name, b.name));
+  if (!categories.length) categories.push({ homarrId: "homarr-default", name: "Homarr", position: 0 });
+  return categories;
+}
+
+function parseHomarrApps(board, categories) {
+  const apps = Array.isArray(board?.apps) ? board.apps : [];
+  const categoryById = new Map(categories.map((category) => [category.homarrId, category.name]));
+  const knownKeys = new Set();
+  return apps
+    .map((app, index) => {
+      const url = normalizeUrl(String(app.behaviour?.externalUrl || app.behaviour?.onClickUrl || app.url || "").trim());
+      const category = homarrAppCategory(app, categoryById);
+      const position = homarrAppPosition(app, index);
+      return {
+        id: createId(),
+        title: String(app.name || url || "Homarr Link").trim().slice(0, 80),
+        url,
+        category,
+        note: "",
+        position,
+        statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
+      };
+    })
+    .filter((link) => {
+      if (!link.url || !/^https?:\/\//i.test(link.url)) return false;
+      const key = `${link.url}::${normalizeMatchText(link.title)}`;
+      if (knownKeys.has(key)) return false;
+      knownKeys.add(key);
+      return true;
+    })
+    .sort((a, b) => compareNames(a.category, b.category) || a.position - b.position || compareNames(a.title, b.title))
+    .map(({ position, ...link }) => link);
+}
+
+function homarrAppCategory(app, categoryById) {
+  const areaType = String(app.area?.type || "").toLowerCase();
+  const categoryId = String(app.area?.properties?.id || "");
+  if (areaType === "category" && categoryById.has(categoryId)) return categoryById.get(categoryId);
+  if (areaType === "sidebar") return "Sidebar";
+  return "Homarr";
+}
+
+function homarrAppPosition(app, fallback) {
+  const locations = [app.shape?.lg?.location, app.shape?.md?.location, app.shape?.sm?.location];
+  for (const location of locations) {
+    const x = Number(location?.x);
+    const y = Number(location?.y);
+    if (Number.isFinite(x) && Number.isFinite(y)) return y * 100 + x;
+  }
+  return fallback;
+}
+
+function uniqueProfileName(baseName) {
+  const existingNames = new Set(state.profiles.map((profile) => profile.name.toLowerCase()));
+  if (!existingNames.has(baseName.toLowerCase())) return baseName;
+  let index = 2;
+  while (existingNames.has(`${baseName} ${index}`.toLowerCase())) index += 1;
+  return `${baseName} ${index}`;
+}
+
+function inferCategoryIcon(name) {
+  const normalized = String(name || "").toLowerCase();
+  if (/(server|nas|idrac|ilo|vmware|proxmox)/.test(normalized)) return "server";
+  if (/(internet|netz|switch|router|firewall)/.test(normalized)) return "network";
+  if (/(medien|media|video|photo|foto)/.test(normalized)) return "media";
+  if (/(smart|home|haus)/.test(normalized)) return "home";
+  if (/(sicher|security|vault|passwort)/.test(normalized)) return "shield";
+  if (/(werk|tool|tools|util|nutz)/.test(normalized)) return "tool";
+  if (/(business|shop|rechnung|daily|täglich|taeglich)/.test(normalized)) return "briefcase";
+  return "folder";
 }
 
 async function importBookmarks(html) {
@@ -1946,6 +2070,10 @@ elements.settingsImportButton.addEventListener("click", () => {
 elements.settingsBookmarkImportButton.addEventListener("click", () => {
   elements.settingsDialog.close();
   openImportDialog("bookmarks");
+});
+elements.settingsHomarrImportButton.addEventListener("click", () => {
+  elements.settingsDialog.close();
+  openImportDialog("homarr");
 });
 elements.createDemoButton.addEventListener("click", () => createDemoProfile().catch((error) => showToast(error.message)));
 elements.settingShowWeatherWidget.addEventListener("change", renderWeatherSettings);
