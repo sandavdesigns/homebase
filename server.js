@@ -212,7 +212,23 @@ function parseHomarrCategories(data) {
 function parseHomarrLinks(data, categories) {
   const categoryById = new Map(categories.map((category) => [category.homarrId, category.name]));
   const knownKeys = new Set();
-  return data.apps
+  return [
+    ...parseHomarrAppLinks(data, categoryById),
+    ...parseHomarrBookmarkLinks(data, categoryById)
+  ]
+    .filter((link) => {
+      if (!link.url || !/^https?:\/\//i.test(link.url)) return false;
+      const key = `${link.url}::${link.title.toLowerCase().replace(/[^a-z0-9]+/g, "")}`;
+      if (knownKeys.has(key)) return false;
+      knownKeys.add(key);
+      return true;
+    })
+    .sort((a, b) => a.category.localeCompare(b.category, "de", { sensitivity: "base" }) || a.position - b.position || a.title.localeCompare(b.title, "de", { sensitivity: "base" }))
+    .map(({ position, ...link }) => link);
+}
+
+function parseHomarrAppLinks(data, categoryById) {
+  return (Array.isArray(data.apps) ? data.apps : [])
     .map((app, index) => {
       const url = normalizeUrl(String(app.behaviour?.externalUrl || app.behaviour?.onClickUrl || app.url || "").trim());
       const category = homarrAppCategoryName(app, categoryById);
@@ -226,21 +242,38 @@ function parseHomarrLinks(data, categories) {
         position,
         statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
       };
-    })
-    .filter((link) => {
-      if (!link.url || !/^https?:\/\//i.test(link.url)) return false;
-      const key = `${link.url}::${link.title.toLowerCase().replace(/[^a-z0-9]+/g, "")}`;
-      if (knownKeys.has(key)) return false;
-      knownKeys.add(key);
-      return true;
-    })
-    .sort((a, b) => a.category.localeCompare(b.category, "de", { sensitivity: "base" }) || a.position - b.position || a.title.localeCompare(b.title, "de", { sensitivity: "base" }))
-    .map(({ position, ...link }) => link);
+    });
+}
+
+function parseHomarrBookmarkLinks(data, categoryById) {
+  return (Array.isArray(data.widgets) ? data.widgets : [])
+    .filter((widget) => String(widget?.type || "").toLowerCase() === "bookmark")
+    .flatMap((widget, widgetIndex) => {
+      const category = homarrAreaCategoryName(widget, categoryById);
+      const widgetPosition = homarrAppPosition(widget, widgetIndex) * 1000;
+      const items = Array.isArray(widget.properties?.items) ? widget.properties.items : [];
+      return items.map((item, itemIndex) => {
+        const url = normalizeUrl(String(item.href || item.url || "").trim());
+        return {
+          id: crypto.randomUUID(),
+          title: String(item.name || url || "Homarr Bookmark").trim().slice(0, 80),
+          url,
+          category,
+          note: "",
+          position: widgetPosition + itemIndex,
+          statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
+        };
+      });
+    });
 }
 
 function homarrAppCategoryName(app, categoryById) {
-  const areaType = String(app.area?.type || "").toLowerCase();
-  const categoryId = String(app.area?.properties?.id || "");
+  return homarrAreaCategoryName(app, categoryById);
+}
+
+function homarrAreaCategoryName(item, categoryById) {
+  const areaType = String(item.area?.type || "").toLowerCase();
+  const categoryId = String(item.area?.properties?.id || "");
   if (areaType === "category" && categoryById.has(categoryId)) return categoryById.get(categoryId);
   if (areaType === "sidebar") return "Sidebar";
   return "Homarr";

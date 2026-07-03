@@ -1775,9 +1775,25 @@ function parseHomarrCategories(board) {
 }
 
 function parseHomarrApps(board, categories) {
-  const apps = Array.isArray(board?.apps) ? board.apps : [];
   const categoryById = new Map(categories.map((category) => [category.homarrId, category.name]));
   const knownKeys = new Set();
+  return [
+    ...parseHomarrAppLinks(board, categoryById),
+    ...parseHomarrBookmarkLinks(board, categoryById)
+  ]
+    .filter((link) => {
+      if (!link.url || !/^https?:\/\//i.test(link.url)) return false;
+      const key = `${link.url}::${normalizeMatchText(link.title)}`;
+      if (knownKeys.has(key)) return false;
+      knownKeys.add(key);
+      return true;
+    })
+    .sort((a, b) => compareNames(a.category, b.category) || a.position - b.position || compareNames(a.title, b.title))
+    .map(({ position, ...link }) => link);
+}
+
+function parseHomarrAppLinks(board, categoryById) {
+  const apps = Array.isArray(board?.apps) ? board.apps : [];
   return apps
     .map((app, index) => {
       const url = normalizeUrl(String(app.behaviour?.externalUrl || app.behaviour?.onClickUrl || app.url || "").trim());
@@ -1792,21 +1808,39 @@ function parseHomarrApps(board, categories) {
         position,
         statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
       };
-    })
-    .filter((link) => {
-      if (!link.url || !/^https?:\/\//i.test(link.url)) return false;
-      const key = `${link.url}::${normalizeMatchText(link.title)}`;
-      if (knownKeys.has(key)) return false;
-      knownKeys.add(key);
-      return true;
-    })
-    .sort((a, b) => compareNames(a.category, b.category) || a.position - b.position || compareNames(a.title, b.title))
-    .map(({ position, ...link }) => link);
+    });
+}
+
+function parseHomarrBookmarkLinks(board, categoryById) {
+  const widgets = Array.isArray(board?.widgets) ? board.widgets : [];
+  return widgets
+    .filter((widget) => String(widget?.type || "").toLowerCase() === "bookmark")
+    .flatMap((widget, widgetIndex) => {
+      const category = homarrAreaCategory(widget, categoryById);
+      const widgetPosition = homarrAppPosition(widget, widgetIndex) * 1000;
+      const items = Array.isArray(widget.properties?.items) ? widget.properties.items : [];
+      return items.map((item, itemIndex) => {
+        const url = normalizeUrl(String(item.href || item.url || "").trim());
+        return {
+          id: createId(),
+          title: String(item.name || url || "Homarr Bookmark").trim().slice(0, 80),
+          url,
+          category,
+          note: "",
+          position: widgetPosition + itemIndex,
+          statusWidget: { enabled: false, type: "basic", url: "", statusPath: "" }
+        };
+      });
+    });
 }
 
 function homarrAppCategory(app, categoryById) {
-  const areaType = String(app.area?.type || "").toLowerCase();
-  const categoryId = String(app.area?.properties?.id || "");
+  return homarrAreaCategory(app, categoryById);
+}
+
+function homarrAreaCategory(item, categoryById) {
+  const areaType = String(item.area?.type || "").toLowerCase();
+  const categoryId = String(item.area?.properties?.id || "");
   if (areaType === "category" && categoryById.has(categoryId)) return categoryById.get(categoryId);
   if (areaType === "sidebar") return "Sidebar";
   return "Homarr";
