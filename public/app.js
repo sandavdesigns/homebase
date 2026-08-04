@@ -9,7 +9,7 @@ const state = {
   categories: [],
   links: [],
   widgets: { clock: true, notes: [], googleSearch: false, statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
-  preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, compactCategoryLayout: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
+  preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, compactCategoryLayout: false, tileCategoryLayout: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
   auth: { enabled: false, authenticated: true },
   status: { configured: 0, updatedAt: "", items: [] },
   weather: { enabled: false },
@@ -111,6 +111,7 @@ const elements = {
   removeBackgroundButton: document.querySelector("#removeBackgroundButton"),
   settingShowCategoryCounts: document.querySelector("#settingShowCategoryCounts"),
   settingCompactCategoryLayout: document.querySelector("#settingCompactCategoryLayout"),
+  settingTileCategoryLayout: document.querySelector("#settingTileCategoryLayout"),
   settingShowLinkStatus: document.querySelector("#settingShowLinkStatus"),
   settingShowNotes: document.querySelector("#settingShowNotes"),
   settingOpenLinksInNewTab: document.querySelector("#settingOpenLinksInNewTab"),
@@ -714,8 +715,10 @@ function renderNewLinkCategory() {
 
 function renderGroups() {
   const query = state.query.trim().toLowerCase();
-  const compactLayout = state.preferences?.compactCategoryLayout === true;
+  const tileLayout = state.preferences?.tileCategoryLayout === true;
+  const compactLayout = !tileLayout && state.preferences?.compactCategoryLayout === true;
   elements.groups.classList.toggle("is-compact", compactLayout);
+  elements.groups.classList.toggle("is-tiles", tileLayout);
   const links = state.links.filter((link) => {
     const haystack = `${link.title} ${link.category} ${link.note}`.toLowerCase();
     return !query || haystack.includes(query);
@@ -1147,6 +1150,7 @@ function openSettingsDialog() {
   renderCategoryTransparencyValue();
   elements.settingShowCategoryCounts.checked = state.preferences?.showCategoryCounts === true;
   elements.settingCompactCategoryLayout.checked = state.preferences?.compactCategoryLayout === true;
+  elements.settingTileCategoryLayout.checked = state.preferences?.tileCategoryLayout === true;
   elements.settingShowLinkStatus.checked = state.preferences?.showLinkStatus !== false;
   elements.settingShowNotes.checked = state.preferences?.showNotes !== false;
   elements.settingOpenLinksInNewTab.checked = state.preferences?.openLinksInNewTab !== false;
@@ -1160,7 +1164,12 @@ function openSettingsDialog() {
   elements.settingWeatherLatitude.value = state.widgets?.weather?.latitude || "";
   elements.settingWeatherLongitude.value = state.widgets?.weather?.longitude || "";
   renderWeatherSettings();
+  renderLayoutSettings();
   elements.settingsDialog.showModal();
+}
+
+function renderLayoutSettings() {
+  elements.settingCompactCategoryLayout.disabled = elements.settingTileCategoryLayout.checked;
 }
 
 function renderWeatherSettings() {
@@ -1496,6 +1505,7 @@ async function saveSettings() {
     ...(state.preferences || {}),
     showCategoryCounts: elements.settingShowCategoryCounts.checked,
     compactCategoryLayout: elements.settingCompactCategoryLayout.checked,
+    tileCategoryLayout: elements.settingTileCategoryLayout.checked,
     showLinkStatus: elements.settingShowLinkStatus.checked,
     showNotes: elements.settingShowNotes.checked,
     openLinksInNewTab: elements.settingOpenLinksInNewTab.checked,
@@ -2159,6 +2169,7 @@ elements.settingsCategoriesButton.addEventListener("click", () => {
 });
 elements.settingsBackgroundOpacity.addEventListener("input", renderBackgroundOpacityValue);
 elements.settingsBackgroundInterval.addEventListener("input", renderBackgroundIntervalValue);
+elements.settingTileCategoryLayout.addEventListener("change", renderLayoutSettings);
 elements.settingsLinkTransparency.addEventListener("input", () => {
   renderLinkTransparencyValue();
   state.appearance = { ...(state.appearance || {}), linkTransparency: normalizeTransparency(elements.settingsLinkTransparency.value, 72) };

@@ -1098,6 +1098,99 @@ textarea:focus {
   width: 100%;
 }
 
+.groups.is-tiles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.groups.is-tiles .group {
+  width: 100%;
+  padding: 12px;
+}
+
+.groups.is-tiles .group h2 {
+  margin-bottom: 10px;
+}
+
+.groups.is-tiles .link-list {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(92px, 8vw, 156px), 1fr));
+  gap: 10px;
+}
+
+.groups.is-tiles .link-card {
+  aspect-ratio: 1;
+  min-height: 0;
+}
+
+.groups.is-tiles .link-content {
+  min-height: 0;
+  padding: 12px 9px 10px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+.groups.is-tiles .link-title {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding-right: 0;
+  font-size: clamp(0.74rem, 0.72rem + 0.16vw, 0.9rem);
+  line-height: 1.12;
+}
+
+.groups.is-tiles .link-title span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.groups.is-tiles .favicon {
+  width: clamp(22px, 2vw, 32px);
+  height: clamp(22px, 2vw, 32px);
+  flex-basis: auto;
+  border-radius: 7px;
+}
+
+.groups.is-tiles .link-note {
+  display: none;
+}
+
+.groups.is-tiles .link-status-panel {
+  width: 100%;
+  margin-top: 8px;
+  gap: 4px;
+  padding: 5px;
+}
+
+.groups.is-tiles .link-status-line {
+  justify-content: center;
+  font-size: 0.68rem;
+}
+
+.groups.is-tiles .link-status-metrics {
+  display: none;
+}
+
+.groups.is-tiles .ha-controls {
+  justify-content: center;
+}
+
+.groups.is-tiles .ha-control {
+  min-height: 22px;
+  padding: 2px 7px;
+  font-size: 0.66rem;
+}
+
+.groups.is-tiles .edit-link {
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  min-height: 24px;
+}
+
 .group-column {
   display: grid;
   align-content: start;
