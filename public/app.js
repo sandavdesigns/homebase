@@ -64,7 +64,9 @@ const elements = {
   setupProfileName: document.querySelector("#setupProfileName"),
   completeSetupButton: document.querySelector("#completeSetupButton"),
   editorDialog: document.querySelector("#editorDialog"),
-  settingsDialog: document.querySelector("#settingsDialog"),
+  settingsPage: document.querySelector("#settingsPage"),
+  closeSettingsButton: document.querySelector("#closeSettingsButton"),
+  cancelSettingsButton: document.querySelector("#cancelSettingsButton"),
   loginDialog: document.querySelector("#loginDialog"),
   categoriesDialog: document.querySelector("#categoriesDialog"),
   categoriesForm: document.querySelector("#categoriesForm"),
@@ -1161,7 +1163,7 @@ function toggleSecretFields() {
   elements.toggleSecretFieldsButton.textContent = reveal ? "Zugangsdaten verbergen" : "Zugangsdaten anzeigen";
 }
 
-function openSettingsDialog() {
+function openSettingsPage() {
   if (!canEdit()) return openAdminDialog();
   elements.settingsTitle.value = state.title;
   elements.settingsSubtitle.value = state.subtitle;
@@ -1196,7 +1198,14 @@ function openSettingsDialog() {
   elements.logoutButton.hidden = !(state.auth?.enabled && state.auth.authenticated);
   renderWeatherSettings();
   renderLayoutSettings();
-  elements.settingsDialog.showModal();
+  elements.settingsPage.hidden = false;
+  document.body.classList.add("is-settings-page");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function closeSettingsPage() {
+  elements.settingsPage.hidden = true;
+  document.body.classList.remove("is-settings-page");
 }
 
 function openLoginDialog() {
@@ -1229,7 +1238,7 @@ async function logout() {
   const response = await fetch("/api/auth/logout", { method: "POST" });
   if (!response.ok) throw new Error("Abmelden fehlgeschlagen");
   state.auth = await response.json();
-  elements.settingsDialog.close();
+  closeSettingsPage();
   await loadData();
   showToast("Abgemeldet");
 }
@@ -1304,7 +1313,7 @@ function openNoteComposer() {
     showNotes: true
   };
   state.noteComposerOpen = true;
-  elements.settingsDialog.close();
+  closeSettingsPage();
   renderWidgets();
   window.requestAnimationFrame(() => elements.noteInput.focus());
 }
@@ -1601,7 +1610,7 @@ async function saveSettings() {
     }
   };
   await saveSettingsData(settingsPayload, "Einstellungen gespeichert");
-  elements.settingsDialog.close();
+  closeSettingsPage();
   loadWeather().catch(() => {});
 }
 
@@ -1613,7 +1622,7 @@ async function uploadBackgroundImages(files) {
   }
   elements.settingsBackgroundFile.value = "";
   render();
-  if (elements.settingsDialog.open) {
+  if (!elements.settingsPage.hidden) {
     renderBackgroundStatus();
     renderBackgroundGallery();
     renderBackgroundIntervalValue();
@@ -1649,7 +1658,7 @@ async function removeBackgroundImage(id = "") {
   }
   Object.assign(state, await response.json());
   render();
-  if (elements.settingsDialog.open) {
+  if (!elements.settingsPage.hidden) {
     renderBackgroundStatus();
     renderBackgroundGallery();
   }
@@ -1708,7 +1717,7 @@ async function createDemoProfile() {
   state.activeProfileId = "demo";
   syncActiveProfileAliases();
   await saveData("Demo-Profil erstellt");
-  elements.settingsDialog.close();
+  closeSettingsPage();
 }
 
 function createDemoLink(title, url, category, note) {
@@ -2240,10 +2249,10 @@ elements.searchToggleButton.addEventListener("click", () => {
   if (state.searchOpen) elements.search.focus();
 });
 elements.addButton.addEventListener("click", () => openLinkDialog());
-elements.settingsButton.addEventListener("click", openSettingsDialog);
+elements.settingsButton.addEventListener("click", openSettingsPage);
 elements.newNoteButton.addEventListener("click", openNoteComposer);
 elements.settingsCategoriesButton.addEventListener("click", () => {
-  elements.settingsDialog.close();
+  closeSettingsPage();
   openCategoriesDialog();
 });
 elements.settingsBackgroundOpacity.addEventListener("input", renderBackgroundOpacityValue);
@@ -2266,22 +2275,22 @@ elements.removeBackgroundButton.addEventListener("click", () => {
   removeBackgroundImage().catch((error) => showToast(error.message));
 });
 elements.settingsImportButton.addEventListener("click", () => {
-  elements.settingsDialog.close();
+  closeSettingsPage();
   openImportDialog("json");
 });
 elements.settingsBookmarkImportButton.addEventListener("click", () => {
-  elements.settingsDialog.close();
+  closeSettingsPage();
   openImportDialog("bookmarks");
 });
 elements.settingsHomarrImportButton.addEventListener("click", () => {
-  elements.settingsDialog.close();
+  closeSettingsPage();
   openImportDialog("homarr");
 });
 elements.createDemoButton.addEventListener("click", () => createDemoProfile().catch((error) => showToast(error.message)));
 elements.settingShowWeatherWidget.addEventListener("change", renderWeatherSettings);
 elements.settingsBackupButton.addEventListener("click", downloadBackup);
 elements.settingsRestoreButton.addEventListener("click", () => {
-  elements.settingsDialog.close();
+  closeSettingsPage();
   openImportDialog("restore");
 });
 elements.refreshStatusButton.addEventListener("click", () => loadStatus().catch((error) => showToast(error.message)));
@@ -2309,7 +2318,13 @@ elements.linkCategory.addEventListener("change", () => {
 elements.linkStatusEnabled.addEventListener("change", renderLinkStatusFields);
 elements.linkStatusType.addEventListener("change", renderLinkStatusFields);
 elements.toggleSecretFieldsButton.addEventListener("click", toggleSecretFields);
+elements.closeSettingsButton.addEventListener("click", closeSettingsPage);
+elements.cancelSettingsButton.addEventListener("click", closeSettingsPage);
 elements.saveSettingsButton.addEventListener("click", () => saveSettings().catch((error) => showToast(error.message)));
+elements.settingsForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveSettings().catch((error) => showToast(error.message));
+});
 elements.loginButton.addEventListener("click", () => login().catch((error) => showToast(error.message)));
 elements.logoutButton.addEventListener("click", () => logout().catch((error) => showToast(error.message)));
 elements.loginForm.addEventListener("submit", (event) => {

@@ -501,6 +501,18 @@ body[data-theme="time-circuit"] #timeLabel {
   min-width: 124px;
 }
 
+body.is-settings-page .topbar,
+body.is-settings-page .command-row,
+body.is-settings-page .widgets,
+body.is-settings-page .empty,
+body.is-settings-page .groups {
+  display: none;
+}
+
+.settings-page {
+  margin-top: 6px;
+}
+
 .compact-field,
 .search {
   display: grid;
@@ -1773,10 +1785,6 @@ dialog {
   width: min(760px, calc(100% - 28px));
 }
 
-#settingsDialog {
-  width: min(1120px, calc(100% - 28px));
-}
-
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.58);
   backdrop-filter: blur(4px);
@@ -1792,30 +1800,49 @@ dialog::backdrop {
   box-shadow: var(--shadow);
 }
 
-.settings-dialog-card {
-  display: block;
+.settings-page-card {
+  display: grid;
   width: 100%;
-  max-height: min(86vh, 900px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  columns: 2 360px;
-  column-gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: clamp(14px, 2vw, 22px);
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 32%),
+    color-mix(in srgb, var(--panel-strong), var(--bg) 20%);
+  box-shadow: var(--shadow);
 }
 
-.settings-dialog-card > header,
-.settings-dialog-card > footer,
-.settings-dialog-card > .settings-actions {
-  column-span: all;
+.settings-page-card > header,
+.settings-page-card > footer,
+.settings-page-card > .settings-actions {
+  grid-column: 1 / -1;
 }
 
-.settings-dialog-card > header,
-.settings-dialog-card > label,
-.settings-dialog-card > .background-settings,
-.settings-dialog-card > .settings-options,
-.settings-dialog-card > .settings-actions,
-.settings-dialog-card > footer {
-  break-inside: avoid;
-  margin: 0 0 12px;
+.settings-page-card > header,
+.settings-page-card > footer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-page-card > header p {
+  margin: 0 0 2px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.settings-page-card > header h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.8vw, 2.35rem);
+}
+
+.settings-page-card > footer {
+  justify-content: flex-end;
 }
 
 .dialog-card header,
@@ -1835,7 +1862,8 @@ dialog::backdrop {
   font-size: 1.25rem;
 }
 
-.dialog-card label {
+.dialog-card label,
+.settings-page-card label {
   display: grid;
   gap: 7px;
   color: var(--muted);
@@ -1843,14 +1871,14 @@ dialog::backdrop {
   font-weight: 750;
 }
 
-.settings-dialog-card > label,
-.settings-dialog-card > .background-settings,
-.settings-dialog-card > .settings-options,
-.settings-dialog-card > .settings-actions {
+.settings-page-card > label,
+.settings-page-card > .background-settings,
+.settings-page-card > .settings-options,
+.settings-page-card > .settings-actions {
   min-width: 0;
 }
 
-.settings-dialog-card > label {
+.settings-page-card > label {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -1859,9 +1887,9 @@ dialog::backdrop {
     rgba(255, 255, 255, 0.035);
 }
 
-.settings-dialog-card input,
-.settings-dialog-card select,
-.settings-dialog-card textarea {
+.settings-page-card input,
+.settings-page-card select,
+.settings-page-card textarea {
   min-width: 0;
 }
 
@@ -2021,7 +2049,8 @@ dialog::backdrop {
   margin: 0;
 }
 
-.dialog-card .toggle-row {
+.dialog-card .toggle-row,
+.settings-page-card .toggle-row {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
@@ -2139,10 +2168,6 @@ dialog::backdrop {
   .widgets {
     grid-template-columns: 1fr;
   }
-
-  .settings-dialog-card {
-    columns: 1;
-  }
 }
 
 @media (max-width: 640px) {
@@ -2240,6 +2265,12 @@ dialog::backdrop {
 
   .dialog-card footer span {
     display: none;
+  }
+
+  .settings-page-card > header,
+  .settings-page-card > footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .category-row {

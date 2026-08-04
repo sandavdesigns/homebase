@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product17" />
+    <link rel="stylesheet" href="/styles.css?v=product18" />
   </head>
   <body>
     <div class="custom-background is-active" id="customBackgroundA" aria-hidden="true"></div>
@@ -87,6 +87,154 @@
       </section>
 
       <section id="groups" class="groups" aria-label="Links"></section>
+
+      <section id="settingsPage" class="settings-page" hidden>
+        <form class="settings-page-card" id="settingsForm">
+          <header>
+            <div>
+              <p>Einstellungen</p>
+              <h2>Homebase anpassen</h2>
+            </div>
+            <button id="closeSettingsButton" type="button">Zurück</button>
+          </header>
+          <label>
+            Titel
+            <input id="settingsTitle" required maxlength="80" />
+          </label>
+          <label>
+            Untertitel
+            <input id="settingsSubtitle" maxlength="140" />
+          </label>
+          <label>
+            Theme
+            <select id="themeSelect">
+              <option value="retro">Retro</option>
+              <option value="time-circuit">Time Circuit</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="terminal">Terminal</option>
+              <option value="discord-dark">Discord Dark</option>
+              <option value="discord-light">Discord Light</option>
+            </select>
+          </label>
+          <div class="background-settings">
+            <label>
+              Hintergrundbilder hochladen
+              <input id="settingsBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple />
+            </label>
+            <div class="background-file-row">
+              <span id="settingsBackgroundStatus">Kein Bild</span>
+              <button id="removeBackgroundButton" class="subtle-button" type="button">Alle entfernen</button>
+            </div>
+            <div id="backgroundGallery" class="background-gallery" aria-label="Hintergrundbilder"></div>
+            <label>
+              Wechsel-Intervall <span id="settingsBackgroundIntervalValue">30s</span>
+              <input id="settingsBackgroundInterval" type="range" min="5" max="300" step="5" />
+            </label>
+            <label>
+              Hintergrund-Transparenz <span id="settingsBackgroundOpacityValue">35%</span>
+              <input id="settingsBackgroundOpacity" type="range" min="0" max="90" step="5" />
+            </label>
+            <label>
+              Button-Transparenz <span id="settingsLinkTransparencyValue">72%</span>
+              <input id="settingsLinkTransparency" type="range" min="0" max="100" step="5" />
+            </label>
+            <label>
+              Kategorie-Transparenz <span id="settingsCategoryTransparencyValue">58%</span>
+              <input id="settingsCategoryTransparency" type="range" min="0" max="100" step="5" />
+            </label>
+          </div>
+          <div class="settings-options" aria-label="Anzeige">
+            <label class="toggle-row">
+              <input id="settingStartpageMode" type="checkbox" />
+              <span>Startseiten-Modus</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShareMode" type="checkbox" />
+              <span>Freigabe-Modus</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShowCategoryCounts" type="checkbox" />
+              <span>Kategorie-Zahlen anzeigen</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingCompactCategoryLayout" type="checkbox" />
+              <span>Kategorien kompakt stapeln</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingTileCategoryLayout" type="checkbox" />
+              <span>Kachelansicht verwenden</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShowLinkStatus" type="checkbox" />
+              <span>Status an Linkkarten anzeigen</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShowNotes" type="checkbox" />
+              <span>Notizenbereich anzeigen</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingOpenLinksInNewTab" type="checkbox" />
+              <span>Links in neuem Tab öffnen</span>
+            </label>
+          </div>
+          <div class="settings-options" aria-label="Widget-Galerie">
+            <label class="toggle-row">
+              <input id="settingShowGoogleWidget" type="checkbox" />
+              <span>Google-Suche anzeigen</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShowStatsWidget" type="checkbox" />
+              <span>Übersicht-Widget anzeigen</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShowStatusWidget" type="checkbox" />
+              <span>Status-Widget anzeigen</span>
+            </label>
+            <label class="toggle-row">
+              <input id="settingShowWeatherWidget" type="checkbox" />
+              <span>Wetter-Widget anzeigen</span>
+            </label>
+            <div class="weather-settings" id="weatherSettings">
+              <label>
+                Wetter-Ort
+                <input id="settingWeatherLabel" maxlength="40" placeholder="Zuhause" />
+              </label>
+              <label>
+                Breitengrad
+                <input id="settingWeatherLatitude" inputmode="decimal" placeholder="52.5200" />
+              </label>
+              <label>
+                Längengrad
+                <input id="settingWeatherLongitude" inputmode="decimal" placeholder="13.4050" />
+              </label>
+            </div>
+          </div>
+          <div class="settings-options auth-settings" aria-label="Zugriffsschutz">
+            <p class="settings-help">Server-Passwort kommt aus der Container-Variable ADMIN_PASSWORD.</p>
+            <label>
+              IPs ohne Login
+              <textarea id="settingAllowedIps" rows="3" placeholder="192.168.1.10&#10;192.168.1.20"></textarea>
+            </label>
+            <button id="logoutButton" class="subtle-button" type="button">Abmelden</button>
+          </div>
+          <div class="settings-actions" aria-label="Verwaltung">
+            <button id="newProfileButton" type="button">+ Profil</button>
+            <button id="deleteProfileButton" class="danger subtle-danger" type="button">Profil löschen</button>
+            <button id="createDemoButton" type="button">Demo-Profil</button>
+            <button id="settingsCategoriesButton" type="button">Kategorien</button>
+            <button id="settingsBookmarkImportButton" type="button">Bookmarks</button>
+            <button id="settingsHomarrImportButton" type="button">Homarr</button>
+            <button id="settingsImportButton" type="button">Import</button>
+            <button id="settingsBackupButton" type="button">Backup</button>
+            <button id="settingsRestoreButton" type="button">Restore</button>
+          </div>
+          <footer>
+            <button id="cancelSettingsButton" type="button">Abbrechen</button>
+            <button class="primary" id="saveSettingsButton" type="button">Speichern</button>
+          </footer>
+        </form>
+      </section>
     </main>
 
     <dialog id="setupDialog">
@@ -202,153 +350,6 @@
           <span></span>
           <button value="cancel" formnovalidate type="submit">Abbrechen</button>
           <button class="primary" id="saveLinkButton" value="default" type="button">Speichern</button>
-        </footer>
-      </form>
-    </dialog>
-
-    <dialog id="settingsDialog">
-      <form method="dialog" class="dialog-card settings-dialog-card" id="settingsForm">
-        <header>
-          <h2>Einstellungen</h2>
-          <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
-        </header>
-        <label>
-          Titel
-          <input id="settingsTitle" required maxlength="80" />
-        </label>
-        <label>
-          Untertitel
-          <input id="settingsSubtitle" maxlength="140" />
-        </label>
-        <label>
-          Theme
-          <select id="themeSelect">
-            <option value="retro">Retro</option>
-            <option value="time-circuit">Time Circuit</option>
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-            <option value="terminal">Terminal</option>
-            <option value="discord-dark">Discord Dark</option>
-            <option value="discord-light">Discord Light</option>
-          </select>
-        </label>
-        <div class="background-settings">
-          <label>
-            Hintergrundbilder hochladen
-            <input id="settingsBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple />
-          </label>
-          <div class="background-file-row">
-            <span id="settingsBackgroundStatus">Kein Bild</span>
-            <button id="removeBackgroundButton" class="subtle-button" type="button">Alle entfernen</button>
-          </div>
-          <div id="backgroundGallery" class="background-gallery" aria-label="Hintergrundbilder"></div>
-          <label>
-            Wechsel-Intervall <span id="settingsBackgroundIntervalValue">30s</span>
-            <input id="settingsBackgroundInterval" type="range" min="5" max="300" step="5" />
-          </label>
-          <label>
-            Hintergrund-Transparenz <span id="settingsBackgroundOpacityValue">35%</span>
-            <input id="settingsBackgroundOpacity" type="range" min="0" max="90" step="5" />
-          </label>
-          <label>
-            Button-Transparenz <span id="settingsLinkTransparencyValue">72%</span>
-            <input id="settingsLinkTransparency" type="range" min="0" max="100" step="5" />
-          </label>
-          <label>
-            Kategorie-Transparenz <span id="settingsCategoryTransparencyValue">58%</span>
-            <input id="settingsCategoryTransparency" type="range" min="0" max="100" step="5" />
-          </label>
-        </div>
-        <div class="settings-options" aria-label="Anzeige">
-          <label class="toggle-row">
-            <input id="settingStartpageMode" type="checkbox" />
-            <span>Startseiten-Modus</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShareMode" type="checkbox" />
-            <span>Freigabe-Modus</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShowCategoryCounts" type="checkbox" />
-            <span>Kategorie-Zahlen anzeigen</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingCompactCategoryLayout" type="checkbox" />
-            <span>Kategorien kompakt stapeln</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingTileCategoryLayout" type="checkbox" />
-            <span>Kachelansicht verwenden</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShowLinkStatus" type="checkbox" />
-            <span>Status an Linkkarten anzeigen</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShowNotes" type="checkbox" />
-            <span>Notizenbereich anzeigen</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingOpenLinksInNewTab" type="checkbox" />
-            <span>Links in neuem Tab öffnen</span>
-          </label>
-        </div>
-        <div class="settings-options" aria-label="Widget-Galerie">
-          <label class="toggle-row">
-            <input id="settingShowGoogleWidget" type="checkbox" />
-            <span>Google-Suche anzeigen</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShowStatsWidget" type="checkbox" />
-            <span>Übersicht-Widget anzeigen</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShowStatusWidget" type="checkbox" />
-            <span>Status-Widget anzeigen</span>
-          </label>
-          <label class="toggle-row">
-            <input id="settingShowWeatherWidget" type="checkbox" />
-            <span>Wetter-Widget anzeigen</span>
-          </label>
-          <div class="weather-settings" id="weatherSettings">
-            <label>
-              Wetter-Ort
-              <input id="settingWeatherLabel" maxlength="40" placeholder="Zuhause" />
-            </label>
-            <label>
-              Breitengrad
-              <input id="settingWeatherLatitude" inputmode="decimal" placeholder="52.5200" />
-            </label>
-            <label>
-              Längengrad
-              <input id="settingWeatherLongitude" inputmode="decimal" placeholder="13.4050" />
-            </label>
-          </div>
-        </div>
-        <div class="settings-options auth-settings" aria-label="Zugriffsschutz">
-          <p class="settings-help">Server-Passwort kommt aus der Container-Variable ADMIN_PASSWORD.</p>
-          <label>
-            IPs ohne Login
-            <textarea id="settingAllowedIps" rows="3" placeholder="192.168.1.10&#10;192.168.1.20"></textarea>
-          </label>
-          <button id="logoutButton" class="subtle-button" type="button">Abmelden</button>
-        </div>
-        <div class="settings-actions" aria-label="Verwaltung">
-          <button id="newProfileButton" type="button">+ Profil</button>
-          <button id="deleteProfileButton" class="danger subtle-danger" type="button">Profil löschen</button>
-          <button id="createDemoButton" type="button">Demo-Profil</button>
-          <button id="settingsCategoriesButton" type="button">Kategorien</button>
-          <button id="settingsBookmarkImportButton" type="button">Bookmarks</button>
-          <button id="settingsHomarrImportButton" type="button">Homarr</button>
-          <button id="settingsImportButton" type="button">Import</button>
-          <button id="settingsBackupButton" type="button">Backup</button>
-          <button id="settingsRestoreButton" type="button">Restore</button>
-        </div>
-        <footer>
-          <span></span>
-          <span></span>
-          <button value="cancel" formnovalidate type="submit">Abbrechen</button>
-          <button class="primary" id="saveSettingsButton" value="default" type="button">Speichern</button>
         </footer>
       </form>
     </dialog>
