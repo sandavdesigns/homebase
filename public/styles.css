@@ -1788,6 +1788,24 @@ dialog::backdrop {
   box-shadow: var(--shadow);
 }
 
+.settings-dialog-card {
+  width: min(1120px, calc(100vw - 28px));
+  max-height: min(86vh, 900px);
+  overflow: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.settings-dialog-card > header,
+.settings-dialog-card > footer,
+.settings-dialog-card > .settings-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-dialog-card > label {
+  align-self: stretch;
+}
+
 .dialog-card header,
 .dialog-card footer {
   display: grid;
@@ -1822,6 +1840,11 @@ dialog::backdrop {
   border-radius: 8px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.045);
+}
+
+.auth-settings textarea {
+  min-height: 92px;
+  resize: vertical;
 }
 
 .settings-actions {
@@ -2068,6 +2091,10 @@ dialog::backdrop {
 
 @media (max-width: 920px) {
   .widgets {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-dialog-card {
     grid-template-columns: 1fr;
   }
 }

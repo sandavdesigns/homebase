@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product13" />
+    <link rel="stylesheet" href="/styles.css?v=product14" />
   </head>
   <body>
     <div class="custom-background is-active" id="customBackgroundA" aria-hidden="true"></div>
@@ -207,7 +207,7 @@
     </dialog>
 
     <dialog id="settingsDialog">
-      <form method="dialog" class="dialog-card" id="settingsForm">
+      <form method="dialog" class="dialog-card settings-dialog-card" id="settingsForm">
         <header>
           <h2>Einstellungen</h2>
           <button class="icon-button" value="cancel" aria-label="Schließen" formnovalidate type="submit">x</button>
@@ -325,6 +325,25 @@
             </label>
           </div>
         </div>
+        <div class="settings-options auth-settings" aria-label="Zugriffsschutz">
+          <label class="toggle-row">
+            <input id="settingAuthEnabled" type="checkbox" />
+            <span>Zugriffsschutz aktivieren</span>
+          </label>
+          <label>
+            Benutzer
+            <input id="settingAuthUsername" autocomplete="username" maxlength="60" placeholder="david" />
+          </label>
+          <label>
+            Neues Passwort
+            <input id="settingAuthPassword" type="password" autocomplete="new-password" placeholder="leer lassen = behalten" />
+          </label>
+          <label>
+            IPs ohne Login
+            <textarea id="settingAllowedIps" rows="3" placeholder="192.168.1.10&#10;192.168.1.20"></textarea>
+          </label>
+          <button id="logoutButton" class="subtle-button" type="button">Abmelden</button>
+        </div>
         <div class="settings-actions" aria-label="Verwaltung">
           <button id="newProfileButton" type="button">+ Profil</button>
           <button id="deleteProfileButton" class="danger subtle-danger" type="button">Profil löschen</button>
@@ -341,6 +360,28 @@
           <span></span>
           <button value="cancel" formnovalidate type="submit">Abbrechen</button>
           <button class="primary" id="saveSettingsButton" value="default" type="button">Speichern</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="loginDialog">
+      <form method="dialog" class="dialog-card" id="loginForm">
+        <header>
+          <h2>Login</h2>
+        </header>
+        <label>
+          Benutzer
+          <input id="loginUsername" autocomplete="username" required />
+        </label>
+        <label>
+          Passwort
+          <input id="loginPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <footer>
+          <span></span>
+          <span></span>
+          <span></span>
+          <button class="primary" id="loginButton" value="default" type="button">Einloggen</button>
         </footer>
       </form>
     </dialog>
@@ -426,6 +467,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=product8"></script>
+    <script src="/app.js?v=product9"></script>
   </body>
 </html>

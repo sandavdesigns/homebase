@@ -65,7 +65,10 @@ const defaultData = {
     openLinksInNewTab: true
   },
   admin: {
-    enabled: false
+    enabled: false,
+    username: "david",
+    passwordHash: "",
+    allowedIps: []
   },
   profiles: [
     {
@@ -152,10 +155,7 @@ function normalizeData(data) {
     activeProfileId,
     widgets: normalizeWidgets(data.widgets),
     preferences: normalizePreferences(data.preferences),
-    admin: {
-      enabled: false,
-      passwordHash: String(data.admin?.passwordHash || "")
-    },
+    admin: normalizeAdmin(data.admin),
     profiles,
     categories: activeProfile.categories,
     links: activeProfile.links
@@ -180,7 +180,7 @@ function convertHomarrData(data) {
     activeProfileId: profileId,
     widgets: defaultData.widgets,
     preferences: defaultData.preferences,
-    admin: { enabled: false },
+    admin: defaultData.admin,
     profiles: [
       {
         id: profileId,
@@ -441,6 +441,24 @@ function normalizePreferences(preferences) {
   };
 }
 
+function normalizeAdmin(admin) {
+  const allowedIps = Array.isArray(admin?.allowedIps)
+    ? admin.allowedIps
+    : String(admin?.allowedIps || "").split(/[\n,;]/);
+  const passwordHash = admin?.password
+    ? hashPassword(admin.password)
+    : String(admin?.passwordHash || "");
+  return {
+    enabled: admin?.enabled === true,
+    username: String(admin?.username || "david").trim().slice(0, 60) || "david",
+    passwordHash,
+    allowedIps: allowedIps
+      .map((ip) => normalizeIpToken(ip))
+      .filter(Boolean)
+      .slice(0, 80)
+  };
+}
+
 function normalizeStatusWidget(widget, fallbackUrl = "") {
   const enabled = widget?.enabled === true;
   return {
@@ -557,11 +575,23 @@ function parseCookies(req) {
 }
 
 function isAuthed(req) {
+  const data = readDataWithoutMigration();
+  if (!isAuthEnabled(data)) return true;
+  if (isAllowedIp(req, data.admin)) return true;
+  const sessionId = parseCookies(req).homebase_session;
+  const session = sessionId ? sessions.get(sessionId) : null;
+  if (!session) return false;
+  if (session.expiresAt <= Date.now()) {
+    sessions.delete(sessionId);
+    return false;
+  }
   return true;
 }
 
 function requireAuth(req, res) {
-  return true;
+  if (isAuthed(req)) return true;
+  sendJson(res, 401, { error: "Login erforderlich" });
+  return false;
 }
 
 function readDataWithoutMigration() {
@@ -593,18 +623,64 @@ function clearSessionCookie(res) {
 
 function toPublicData(data, req) {
   const { passwordHash, ...publicAdmin } = data.admin || {};
-  const authenticated = true;
-  const publicData = authenticated ? data : redactStatusSecrets(data);
+  const authEnabled = isAuthEnabled(data);
+  const authenticated = !authEnabled || isAuthed(req);
+  const publicData = authenticated ? data : createLockedData(data);
   return {
     ...publicData,
     admin: {
-      ...publicAdmin,
-      enabled: false
+      ...(authenticated ? publicAdmin : { username: publicAdmin.username || "" }),
+      enabled: authEnabled,
+      hasPassword: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash)
     },
     auth: {
-      enabled: false,
-      authenticated: true
+      enabled: authEnabled,
+      authenticated,
+      ipAllowed: authEnabled ? isAllowedIp(req, data.admin) : true
     }
+  };
+}
+
+function isAuthEnabled(data) {
+  const hasLocalAccess = data.admin?.passwordHash || data.admin?.allowedIps?.length;
+  return Boolean(ADMIN_PASSWORD || (data.admin?.enabled === true && hasLocalAccess));
+}
+
+function getClientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const raw = forwarded || req.socket.remoteAddress || "";
+  return normalizeIpToken(raw.replace(/^::ffff:/, ""));
+}
+
+function normalizeIpToken(value) {
+  const ip = String(value || "").trim().replace(/^::ffff:/, "");
+  if (!ip) return "";
+  if (ip === "::1") return "127.0.0.1";
+  return ip;
+}
+
+function isAllowedIp(req, admin) {
+  const allowedIps = Array.isArray(admin?.allowedIps) ? admin.allowedIps.map(normalizeIpToken).filter(Boolean) : [];
+  if (!allowedIps.length) return false;
+  const clientIp = getClientIp(req);
+  return allowedIps.includes(clientIp);
+}
+
+function createLockedData(data) {
+  return {
+    schemaVersion: data.schemaVersion || 5,
+    setupComplete: data.setupComplete !== false,
+    title: data.title || "Homebase",
+    subtitle: "Login erforderlich",
+    theme: data.theme || "retro",
+    appearance: data.appearance || defaultData.appearance,
+    activeProfileId: "",
+    widgets: { clock: true, notes: [], googleSearch: false, statusOverview: false, linkStats: false, weather: { enabled: false } },
+    preferences: data.preferences || defaultData.preferences,
+    profiles: [],
+    categories: [],
+    links: [],
+    status: { configured: 0, updatedAt: "", items: [] }
   };
 }
 
@@ -2277,7 +2353,7 @@ const server = http.createServer(async (req, res) => {
         title: body.title || current.title,
         subtitle: body.subtitle || current.subtitle,
         theme: body.theme || current.theme,
-        admin: body.password ? { passwordHash: hashPassword(body.password) } : current.admin,
+        admin: body.password ? { ...current.admin, enabled: true, passwordHash: hashPassword(body.password) } : current.admin,
         activeProfileId: firstProfile.id,
         profiles: [firstProfile]
       });
@@ -2299,18 +2375,26 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/auth/status" && req.method === "GET") {
-      sendJson(res, 200, { enabled: false, authenticated: true });
+      const data = readData();
+      const enabled = isAuthEnabled(data);
+      sendJson(res, 200, {
+        enabled,
+        authenticated: !enabled || isAuthed(req),
+        ipAllowed: enabled ? isAllowedIp(req, data.admin) : true
+      });
       return;
     }
 
     if (url.pathname === "/api/auth/login" && req.method === "POST") {
       const body = JSON.parse(await readRequestBody(req));
       const data = readData();
-      if (!ADMIN_PASSWORD && !data.admin?.passwordHash || verifyPassword(body.password, data.admin?.passwordHash)) {
+      const enabled = isAuthEnabled(data);
+      const usernameOk = ADMIN_PASSWORD || !data.admin?.username || String(body.username || "").trim() === data.admin.username;
+      if (!enabled || (usernameOk && verifyPassword(body.password, data.admin?.passwordHash))) {
         const sessionId = crypto.randomUUID();
         sessions.set(sessionId, { expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
         setSessionCookie(res, sessionId);
-        sendJson(res, 200, { enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash), authenticated: true });
+        sendJson(res, 200, { enabled, authenticated: true, ipAllowed: isAllowedIp(req, data.admin) });
         return;
       }
       sendJson(res, 401, { error: "Invalid password" });
@@ -2322,11 +2406,14 @@ const server = http.createServer(async (req, res) => {
       if (sessionId) sessions.delete(sessionId);
       clearSessionCookie(res);
       const data = readData();
-      sendJson(res, 200, { enabled: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash), authenticated: false });
+      const enabled = isAuthEnabled(data);
+      const ipAllowed = enabled ? isAllowedIp(req, data.admin) : true;
+      sendJson(res, 200, { enabled, authenticated: !enabled || ipAllowed, ipAllowed });
       return;
     }
 
     if (url.pathname === "/api/link-status" && req.method === "GET") {
+      if (!requireAuth(req, res)) return;
       const target = url.searchParams.get("url") || "";
       const parsed = parseHttpUrl(target);
       if (!parsed) {
@@ -2343,11 +2430,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/link-metadata" && req.method === "GET") {
+      if (!requireAuth(req, res)) return;
       sendJson(res, 200, await readLinkMetadata(url.searchParams.get("url") || ""));
       return;
     }
 
     if (url.pathname === "/api/status" && req.method === "GET") {
+      if (!requireAuth(req, res)) return;
       sendJson(res, 200, await readStatusTargets());
       return;
     }
@@ -2360,6 +2449,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/weather" && req.method === "GET") {
+      if (!requireAuth(req, res)) return;
       sendJson(res, 200, await readWeather());
       return;
     }

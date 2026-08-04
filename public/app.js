@@ -10,7 +10,8 @@ const state = {
   links: [],
   widgets: { clock: true, notes: [], googleSearch: false, statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
   preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, compactCategoryLayout: false, tileCategoryLayout: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
-  auth: { enabled: false, authenticated: true },
+  admin: { enabled: false, username: "david", allowedIps: [], hasPassword: false },
+  auth: { enabled: false, authenticated: true, ipAllowed: true },
   status: { configured: 0, updatedAt: "", items: [] },
   weather: { enabled: false },
   statusLoading: false,
@@ -64,6 +65,7 @@ const elements = {
   completeSetupButton: document.querySelector("#completeSetupButton"),
   editorDialog: document.querySelector("#editorDialog"),
   settingsDialog: document.querySelector("#settingsDialog"),
+  loginDialog: document.querySelector("#loginDialog"),
   categoriesDialog: document.querySelector("#categoriesDialog"),
   categoriesForm: document.querySelector("#categoriesForm"),
   profileDialog: document.querySelector("#profileDialog"),
@@ -121,6 +123,15 @@ const elements = {
   settingShowStatsWidget: document.querySelector("#settingShowStatsWidget"),
   settingShowStatusWidget: document.querySelector("#settingShowStatusWidget"),
   settingShowWeatherWidget: document.querySelector("#settingShowWeatherWidget"),
+  settingAuthEnabled: document.querySelector("#settingAuthEnabled"),
+  settingAuthUsername: document.querySelector("#settingAuthUsername"),
+  settingAuthPassword: document.querySelector("#settingAuthPassword"),
+  settingAllowedIps: document.querySelector("#settingAllowedIps"),
+  logoutButton: document.querySelector("#logoutButton"),
+  loginForm: document.querySelector("#loginForm"),
+  loginUsername: document.querySelector("#loginUsername"),
+  loginPassword: document.querySelector("#loginPassword"),
+  loginButton: document.querySelector("#loginButton"),
   weatherSettings: document.querySelector("#weatherSettings"),
   settingWeatherLabel: document.querySelector("#settingWeatherLabel"),
   settingWeatherLatitude: document.querySelector("#settingWeatherLatitude"),
@@ -191,7 +202,7 @@ function activeProfile() {
 }
 
 function canEdit() {
-  return true;
+  return state.auth?.authenticated !== false;
 }
 
 function updateClock() {
@@ -212,6 +223,7 @@ async function loadData() {
   syncActiveProfileAliases();
   render();
   if (!state.setupComplete) elements.setupDialog.showModal();
+  if (state.auth?.enabled && !state.auth.authenticated) openLoginDialog();
   loadStatus().catch(() => {});
   loadWeather().catch(() => {});
 }
@@ -237,12 +249,14 @@ async function saveData(message = "Gespeichert") {
       activeProfileId: state.activeProfileId,
       widgets: state.widgets,
       preferences: state.preferences,
+      admin: state.admin,
       profiles: state.profiles
     })
   });
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
+    if (response.status === 401) openLoginDialog();
     throw new Error(payload.error || "Speichern fehlgeschlagen.");
   }
 
@@ -412,7 +426,7 @@ function showBackgroundImage(url, opacity, smooth) {
 }
 
 function renderAdminState() {
-  document.body.classList.remove("is-locked");
+  document.body.classList.toggle("is-locked", state.auth?.enabled === true && state.auth.authenticated === false);
   document.body.classList.toggle("is-startpage-mode", state.preferences?.startpageMode !== false);
   document.body.classList.toggle("is-share-mode", state.preferences?.shareMode === true);
 }
@@ -1163,9 +1177,51 @@ function openSettingsDialog() {
   elements.settingWeatherLabel.value = state.widgets?.weather?.label || "Zuhause";
   elements.settingWeatherLatitude.value = state.widgets?.weather?.latitude || "";
   elements.settingWeatherLongitude.value = state.widgets?.weather?.longitude || "";
+  elements.settingAuthEnabled.checked = state.admin?.enabled === true;
+  elements.settingAuthUsername.value = state.admin?.username || "david";
+  elements.settingAuthPassword.value = "";
+  elements.settingAllowedIps.value = (Array.isArray(state.admin?.allowedIps) ? state.admin.allowedIps : []).join("\n");
+  elements.logoutButton.hidden = !(state.auth?.enabled && state.auth.authenticated);
   renderWeatherSettings();
   renderLayoutSettings();
   elements.settingsDialog.showModal();
+}
+
+function openLoginDialog() {
+  if (elements.loginDialog.open) return;
+  elements.loginUsername.value = state.admin?.username || "";
+  elements.loginPassword.value = "";
+  elements.loginDialog.showModal();
+  window.requestAnimationFrame(() => (elements.loginUsername.value ? elements.loginPassword : elements.loginUsername).focus());
+}
+
+async function login() {
+  if (!elements.loginForm.reportValidity()) return;
+  const response = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: elements.loginUsername.value.trim(),
+      password: elements.loginPassword.value
+    })
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Login fehlgeschlagen");
+  }
+  state.auth = await response.json();
+  elements.loginDialog.close();
+  await loadData();
+  showToast("Eingeloggt");
+}
+
+async function logout() {
+  const response = await fetch("/api/auth/logout", { method: "POST" });
+  if (!response.ok) throw new Error("Abmelden fehlgeschlagen");
+  state.auth = await response.json();
+  elements.settingsDialog.close();
+  await loadData();
+  showToast("Abgemeldet");
 }
 
 function renderLayoutSettings() {
@@ -1491,6 +1547,16 @@ function titleFromUrl(value) {
 
 async function saveSettings() {
   if (!elements.settingsForm.reportValidity()) return;
+  const allowedIps = elements.settingAllowedIps.value
+    .split(/[\n,;]/)
+    .map((ip) => ip.trim())
+    .filter(Boolean);
+  if (elements.settingAuthEnabled.checked && !state.admin?.hasPassword && !elements.settingAuthPassword.value && !allowedIps.length) {
+    elements.settingAuthPassword.setCustomValidity("Bitte Passwort setzen oder IPs erlauben.");
+    elements.settingAuthPassword.reportValidity();
+    return;
+  }
+  elements.settingAuthPassword.setCustomValidity("");
   state.title = elements.settingsTitle.value.trim();
   state.subtitle = elements.settingsSubtitle.value.trim();
   state.theme = elements.themeSelect.value || "retro";
@@ -1525,6 +1591,13 @@ async function saveSettings() {
       longitude: elements.settingWeatherLongitude.value.trim()
     }
   };
+  state.admin = {
+    ...(state.admin || {}),
+    enabled: elements.settingAuthEnabled.checked,
+    username: elements.settingAuthUsername.value.trim() || "david",
+    allowedIps
+  };
+  if (elements.settingAuthPassword.value) state.admin.password = elements.settingAuthPassword.value;
   await saveData("Einstellungen gespeichert");
   elements.settingsDialog.close();
   loadWeather().catch(() => {});
@@ -1972,6 +2045,10 @@ async function completeSetup() {
 }
 
 function openAdminDialog() {
+  if (state.auth?.enabled && !state.auth.authenticated) {
+    openLoginDialog();
+    return;
+  }
   showToast("Bearbeiten ist aktiv");
 }
 
@@ -2231,6 +2308,13 @@ elements.linkStatusEnabled.addEventListener("change", renderLinkStatusFields);
 elements.linkStatusType.addEventListener("change", renderLinkStatusFields);
 elements.toggleSecretFieldsButton.addEventListener("click", toggleSecretFields);
 elements.saveSettingsButton.addEventListener("click", () => saveSettings().catch((error) => showToast(error.message)));
+elements.loginButton.addEventListener("click", () => login().catch((error) => showToast(error.message)));
+elements.logoutButton.addEventListener("click", () => logout().catch((error) => showToast(error.message)));
+elements.loginForm.addEventListener("submit", (event) => {
+  if (event.submitter?.value === "cancel") return;
+  event.preventDefault();
+  login().catch((error) => showToast(error.message));
+});
 elements.addCategoryButton.addEventListener("click", addCategory);
 elements.saveCategoriesButton.addEventListener("click", () => saveCategories().catch((error) => showToast(error.message)));
 elements.categoriesForm.addEventListener("submit", (event) => {
