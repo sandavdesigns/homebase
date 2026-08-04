@@ -1797,6 +1797,7 @@ dialog::backdrop {
   max-height: min(86vh, 900px);
   overflow-y: auto;
   overflow-x: hidden;
+  gap: 12px 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
@@ -1805,10 +1806,6 @@ dialog::backdrop {
 .settings-dialog-card > footer,
 .settings-dialog-card > .settings-actions {
   grid-column: 1 / -1;
-}
-
-.settings-dialog-card > label {
-  align-self: stretch;
 }
 
 .dialog-card header,
@@ -1836,15 +1833,39 @@ dialog::backdrop {
   font-weight: 750;
 }
 
+.settings-dialog-card > label,
+.settings-dialog-card > .background-settings,
+.settings-dialog-card > .settings-options,
+.settings-dialog-card > .settings-actions {
+  min-width: 0;
+}
+
+.settings-dialog-card > label {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 55%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.settings-dialog-card input,
+.settings-dialog-card select,
+.settings-dialog-card textarea {
+  min-width: 0;
+}
+
 .settings-options,
 .settings-actions,
 .link-widget-config {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 14%, transparent), transparent 42%),
+    rgba(255, 255, 255, 0.045);
 }
 
 .auth-settings textarea {
@@ -1866,8 +1887,10 @@ dialog::backdrop {
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 44%),
+    rgba(255, 255, 255, 0.045);
 }
 
 .background-settings span {
