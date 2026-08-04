@@ -1773,6 +1773,10 @@ dialog {
   width: min(760px, calc(100% - 28px));
 }
 
+#settingsDialog {
+  width: min(1120px, calc(100% - 28px));
+}
+
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.58);
   backdrop-filter: blur(4px);
@@ -1789,9 +1793,10 @@ dialog::backdrop {
 }
 
 .settings-dialog-card {
-  width: min(1120px, calc(100vw - 28px));
+  width: 100%;
   max-height: min(86vh, 900px);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
