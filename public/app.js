@@ -10,7 +10,7 @@ const state = {
   links: [],
   widgets: { clock: true, notes: [], googleSearch: false, statusOverview: false, linkStats: false, weather: { enabled: false, label: "Zuhause", latitude: "", longitude: "" } },
   preferences: { startpageMode: true, shareMode: false, showCategoryCounts: false, compactCategoryLayout: false, tileCategoryLayout: false, showLinkStatus: true, showNotes: true, openLinksInNewTab: true },
-  admin: { enabled: false, username: "david", allowedIps: [], hasPassword: false },
+  admin: { enabled: false, allowedIps: [], hasPassword: false },
   auth: { enabled: false, authenticated: true, ipAllowed: true },
   status: { configured: 0, updatedAt: "", items: [] },
   weather: { enabled: false },
@@ -123,13 +123,9 @@ const elements = {
   settingShowStatsWidget: document.querySelector("#settingShowStatsWidget"),
   settingShowStatusWidget: document.querySelector("#settingShowStatusWidget"),
   settingShowWeatherWidget: document.querySelector("#settingShowWeatherWidget"),
-  settingAuthEnabled: document.querySelector("#settingAuthEnabled"),
-  settingAuthUsername: document.querySelector("#settingAuthUsername"),
-  settingAuthPassword: document.querySelector("#settingAuthPassword"),
   settingAllowedIps: document.querySelector("#settingAllowedIps"),
   logoutButton: document.querySelector("#logoutButton"),
   loginForm: document.querySelector("#loginForm"),
-  loginUsername: document.querySelector("#loginUsername"),
   loginPassword: document.querySelector("#loginPassword"),
   loginButton: document.querySelector("#loginButton"),
   weatherSettings: document.querySelector("#weatherSettings"),
@@ -258,6 +254,25 @@ async function saveData(message = "Gespeichert") {
     const payload = await response.json().catch(() => ({}));
     if (response.status === 401) openLoginDialog();
     throw new Error(payload.error || "Speichern fehlgeschlagen.");
+  }
+
+  Object.assign(state, await response.json());
+  syncActiveProfileAliases();
+  render();
+  showToast(message);
+}
+
+async function saveSettingsData(payload, message = "Einstellungen gespeichert") {
+  const response = await fetch("/api/homebase/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    if (response.status === 401) openLoginDialog();
+    throw new Error(errorPayload.error || "Einstellungen konnten nicht gespeichert werden.");
   }
 
   Object.assign(state, await response.json());
@@ -1177,9 +1192,6 @@ function openSettingsDialog() {
   elements.settingWeatherLabel.value = state.widgets?.weather?.label || "Zuhause";
   elements.settingWeatherLatitude.value = state.widgets?.weather?.latitude || "";
   elements.settingWeatherLongitude.value = state.widgets?.weather?.longitude || "";
-  elements.settingAuthEnabled.checked = state.admin?.enabled === true;
-  elements.settingAuthUsername.value = state.admin?.username || "david";
-  elements.settingAuthPassword.value = "";
   elements.settingAllowedIps.value = (Array.isArray(state.admin?.allowedIps) ? state.admin.allowedIps : []).join("\n");
   elements.logoutButton.hidden = !(state.auth?.enabled && state.auth.authenticated);
   renderWeatherSettings();
@@ -1189,10 +1201,9 @@ function openSettingsDialog() {
 
 function openLoginDialog() {
   if (elements.loginDialog.open) return;
-  elements.loginUsername.value = state.admin?.username || "";
   elements.loginPassword.value = "";
   elements.loginDialog.showModal();
-  window.requestAnimationFrame(() => (elements.loginUsername.value ? elements.loginPassword : elements.loginUsername).focus());
+  window.requestAnimationFrame(() => elements.loginPassword.focus());
 }
 
 async function login() {
@@ -1201,7 +1212,6 @@ async function login() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username: elements.loginUsername.value.trim(),
       password: elements.loginPassword.value
     })
   });
@@ -1551,54 +1561,46 @@ async function saveSettings() {
     .split(/[\n,;]/)
     .map((ip) => ip.trim())
     .filter(Boolean);
-  if (elements.settingAuthEnabled.checked && !state.admin?.hasPassword && !elements.settingAuthPassword.value && !allowedIps.length) {
-    elements.settingAuthPassword.setCustomValidity("Bitte Passwort setzen oder IPs erlauben.");
-    elements.settingAuthPassword.reportValidity();
-    return;
-  }
-  elements.settingAuthPassword.setCustomValidity("");
-  state.title = elements.settingsTitle.value.trim();
-  state.subtitle = elements.settingsSubtitle.value.trim();
-  state.theme = elements.themeSelect.value || "retro";
-  state.appearance = {
-    ...(state.appearance || {}),
-    backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100),
-    backgroundInterval: normalizeBackgroundInterval(elements.settingsBackgroundInterval.value),
-    linkTransparency: normalizeTransparency(elements.settingsLinkTransparency.value, 72),
-    categoryTransparency: normalizeTransparency(elements.settingsCategoryTransparency.value, 58)
-  };
-  state.preferences = {
-    ...(state.preferences || {}),
-    showCategoryCounts: elements.settingShowCategoryCounts.checked,
-    compactCategoryLayout: elements.settingCompactCategoryLayout.checked,
-    tileCategoryLayout: elements.settingTileCategoryLayout.checked,
-    showLinkStatus: elements.settingShowLinkStatus.checked,
-    showNotes: elements.settingShowNotes.checked,
-    openLinksInNewTab: elements.settingOpenLinksInNewTab.checked,
-    startpageMode: elements.settingStartpageMode.checked,
-    shareMode: elements.settingShareMode.checked
-  };
-  state.widgets = {
-    ...(state.widgets || {}),
-    googleSearch: elements.settingShowGoogleWidget.checked,
-    linkStats: elements.settingShowStatsWidget.checked,
-    statusOverview: elements.settingShowStatusWidget.checked,
-    weather: {
-      ...(state.widgets?.weather || {}),
-      enabled: elements.settingShowWeatherWidget.checked,
-      label: elements.settingWeatherLabel.value.trim() || "Zuhause",
-      latitude: elements.settingWeatherLatitude.value.trim(),
-      longitude: elements.settingWeatherLongitude.value.trim()
+  const settingsPayload = {
+    title: elements.settingsTitle.value.trim(),
+    subtitle: elements.settingsSubtitle.value.trim(),
+    theme: elements.themeSelect.value || "retro",
+    appearance: {
+      ...(state.appearance || {}),
+      backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100),
+      backgroundInterval: normalizeBackgroundInterval(elements.settingsBackgroundInterval.value),
+      linkTransparency: normalizeTransparency(elements.settingsLinkTransparency.value, 72),
+      categoryTransparency: normalizeTransparency(elements.settingsCategoryTransparency.value, 58)
+    },
+    preferences: {
+      ...(state.preferences || {}),
+      showCategoryCounts: elements.settingShowCategoryCounts.checked,
+      compactCategoryLayout: elements.settingCompactCategoryLayout.checked,
+      tileCategoryLayout: elements.settingTileCategoryLayout.checked,
+      showLinkStatus: elements.settingShowLinkStatus.checked,
+      showNotes: elements.settingShowNotes.checked,
+      openLinksInNewTab: elements.settingOpenLinksInNewTab.checked,
+      startpageMode: elements.settingStartpageMode.checked,
+      shareMode: elements.settingShareMode.checked
+    },
+    widgets: {
+      ...(state.widgets || {}),
+      googleSearch: elements.settingShowGoogleWidget.checked,
+      linkStats: elements.settingShowStatsWidget.checked,
+      statusOverview: elements.settingShowStatusWidget.checked,
+      weather: {
+        ...(state.widgets?.weather || {}),
+        enabled: elements.settingShowWeatherWidget.checked,
+        label: elements.settingWeatherLabel.value.trim() || "Zuhause",
+        latitude: elements.settingWeatherLatitude.value.trim(),
+        longitude: elements.settingWeatherLongitude.value.trim()
+      }
+    },
+    admin: {
+      allowedIps
     }
   };
-  state.admin = {
-    ...(state.admin || {}),
-    enabled: elements.settingAuthEnabled.checked,
-    username: elements.settingAuthUsername.value.trim() || "david",
-    allowedIps
-  };
-  if (elements.settingAuthPassword.value) state.admin.password = elements.settingAuthPassword.value;
-  await saveData("Einstellungen gespeichert");
+  await saveSettingsData(settingsPayload, "Einstellungen gespeichert");
   elements.settingsDialog.close();
   loadWeather().catch(() => {});
 }

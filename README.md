@@ -36,7 +36,7 @@ Danach ist Homebase unter `http://localhost:3000` erreichbar. Im Heimnetz nutzt 
 http://<server-ip>:3000/
 ```
 
-Beim ersten Start erscheint ein Setup-Dialog. Dort legst du Seitentitel, erstes Profil und ein Admin-Passwort fest.
+Beim ersten Start erscheint ein Setup-Dialog. Dort legst du Seitentitel und erstes Profil fest.
 
 ## Portainer Deploy
 
@@ -103,7 +103,7 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 | `HOMEBASE_PORT` | `3000` | Externer Host-Port. |
 | `HOMEBASE_INTERNAL_PORT` | `3000` | Interner Container-Port und Wert fuer `PORT`. Normalerweise unveraendert lassen. |
 | `HOMEBASE_VOLUME_NAME` | `homebase_data` | Docker-Volume fuer Daten und Favicons. Fuer mehrere Stacks jeweils einen eigenen Namen setzen. |
-| `ADMIN_PASSWORD` | leer | Optionales Admin-Passwort. Alternativ kann das Passwort beim ersten Start im Setup gesetzt werden. |
+| `ADMIN_PASSWORD` | leer | Optionales Server-Passwort fuer den Zugriffsschutz. IPs ohne Login pflegst du in den Einstellungen. |
 | `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Link-Statusanzeigen. Secrets bleiben in der Container-Umgebung. |
 
 Container-interne Variablen:
@@ -139,11 +139,9 @@ Profile werden direkt im Browser verwaltet. Jedes Profil hat eigene Kategorien u
 
 ## Admin-Modus
 
-Homebase startet im Startseiten-Modus: Links und Widgets sind sichtbar, Bearbeitung bleibt verborgen. Wenn ein Admin-Passwort gesetzt ist, sind Bearbeiten, Import, Backup/Restore und Profilverwaltung gesperrt. Ueber `Admin gesperrt` kannst du entsperren. Ueber `Admin offen` sperrst du die Bearbeitung wieder.
+Homebase startet im Startseiten-Modus: Links und Widgets sind sichtbar, Bearbeitung bleibt verborgen. Wenn `ADMIN_PASSWORD` gesetzt ist, sind Inhalte und Bearbeitung gesperrt, bis das Server-Passwort eingegeben wurde. IPs aus der Allowlist in den Einstellungen duerfen ohne Login direkt zugreifen.
 
 Der Freigabe-Modus blendet im gesperrten Zustand den Admin-Hinweis aus. Das ist fuer Familien-, Werkstatt- oder Tablet-Ansichten gedacht, bei denen Homebase wie eine ruhige Startseite wirken soll.
-
-Das Passwort kann entweder per `ADMIN_PASSWORD` als Environment-Variable gesetzt werden oder beim ersten Start im Setup. Das Setup-Passwort wird gehasht in `homebase.json` gespeichert.
 
 ## Themes
 

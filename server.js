@@ -65,9 +65,6 @@ const defaultData = {
     openLinksInNewTab: true
   },
   admin: {
-    enabled: false,
-    username: "david",
-    passwordHash: "",
     allowedIps: []
   },
   profiles: [
@@ -120,6 +117,38 @@ function writeData(data) {
   });
   fs.writeFileSync(DATA_FILE, `${JSON.stringify(safeData, null, 2)}\n`);
   return safeData;
+}
+
+function writeSettingsData(settings) {
+  const current = readData();
+  return writeData({
+    ...current,
+    title: settings.title ?? current.title,
+    subtitle: settings.subtitle ?? current.subtitle,
+    theme: settings.theme ?? current.theme,
+    appearance: {
+      ...(current.appearance || {}),
+      ...(settings.appearance || {})
+    },
+    widgets: {
+      ...(current.widgets || {}),
+      ...(settings.widgets || {}),
+      weather: {
+        ...(current.widgets?.weather || {}),
+        ...(settings.widgets?.weather || {})
+      }
+    },
+    preferences: {
+      ...(current.preferences || {}),
+      ...(settings.preferences || {})
+    },
+    admin: {
+      ...(current.admin || {}),
+      allowedIps: settings.admin?.allowedIps ?? current.admin?.allowedIps ?? []
+    },
+    activeProfileId: current.activeProfileId,
+    profiles: current.profiles
+  });
 }
 
 function normalizeData(data) {
@@ -445,13 +474,7 @@ function normalizeAdmin(admin) {
   const allowedIps = Array.isArray(admin?.allowedIps)
     ? admin.allowedIps
     : String(admin?.allowedIps || "").split(/[\n,;]/);
-  const passwordHash = admin?.password
-    ? hashPassword(admin.password)
-    : String(admin?.passwordHash || "");
   return {
-    enabled: admin?.enabled === true,
-    username: String(admin?.username || "david").trim().slice(0, 60) || "david",
-    passwordHash,
     allowedIps: allowedIps
       .map((ip) => normalizeIpToken(ip))
       .filter(Boolean)
@@ -599,18 +622,11 @@ function readDataWithoutMigration() {
   return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
 }
 
-function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
-  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
-  return `${salt}:${hash}`;
-}
-
-function verifyPassword(password, storedHash) {
-  if (ADMIN_PASSWORD && password === ADMIN_PASSWORD) return true;
-  if (!storedHash) return false;
-  const [salt, expectedHash] = storedHash.split(":");
-  if (!salt || !expectedHash) return false;
-  const actualHash = hashPassword(password, salt).split(":")[1];
-  return crypto.timingSafeEqual(Buffer.from(actualHash, "hex"), Buffer.from(expectedHash, "hex"));
+function verifyPassword(password) {
+  if (!ADMIN_PASSWORD) return false;
+  const provided = Buffer.from(String(password || ""));
+  const expected = Buffer.from(String(ADMIN_PASSWORD));
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
 function setSessionCookie(res, sessionId) {
@@ -622,16 +638,15 @@ function clearSessionCookie(res) {
 }
 
 function toPublicData(data, req) {
-  const { passwordHash, ...publicAdmin } = data.admin || {};
   const authEnabled = isAuthEnabled(data);
   const authenticated = !authEnabled || isAuthed(req);
   const publicData = authenticated ? data : createLockedData(data);
   return {
     ...publicData,
     admin: {
-      ...(authenticated ? publicAdmin : { username: publicAdmin.username || "" }),
+      allowedIps: authenticated ? data.admin?.allowedIps || [] : [],
       enabled: authEnabled,
-      hasPassword: Boolean(ADMIN_PASSWORD || data.admin?.passwordHash)
+      hasPassword: Boolean(ADMIN_PASSWORD)
     },
     auth: {
       enabled: authEnabled,
@@ -642,8 +657,7 @@ function toPublicData(data, req) {
 }
 
 function isAuthEnabled(data) {
-  const hasLocalAccess = data.admin?.passwordHash || data.admin?.allowedIps?.length;
-  return Boolean(ADMIN_PASSWORD || (data.admin?.enabled === true && hasLocalAccess));
+  return Boolean(ADMIN_PASSWORD);
 }
 
 function getClientIp(req) {
@@ -2334,9 +2348,17 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (url.pathname === "/api/homebase/settings" && req.method === "PUT") {
+      if (!requireAuth(req, res)) return;
+      const body = await readRequestBody(req);
+      const saved = writeSettingsData(JSON.parse(body));
+      sendJson(res, 200, toPublicData(saved, req));
+      return;
+    }
+
     if (url.pathname === "/api/setup" && req.method === "POST") {
       const current = readData();
-      if (current.setupComplete && (ADMIN_PASSWORD || current.admin?.passwordHash) && !isAuthed(req)) {
+      if (current.setupComplete && ADMIN_PASSWORD && !isAuthed(req)) {
         sendJson(res, 409, { error: "Setup already completed" });
         return;
       }
@@ -2353,15 +2375,10 @@ const server = http.createServer(async (req, res) => {
         title: body.title || current.title,
         subtitle: body.subtitle || current.subtitle,
         theme: body.theme || current.theme,
-        admin: body.password ? { ...current.admin, enabled: true, passwordHash: hashPassword(body.password) } : current.admin,
+        admin: current.admin,
         activeProfileId: firstProfile.id,
         profiles: [firstProfile]
       });
-      if (body.password) {
-        const sessionId = crypto.randomUUID();
-        sessions.set(sessionId, { expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
-        setSessionCookie(res, sessionId);
-      }
       sendJson(res, 200, toPublicData(saved, req));
       return;
     }
@@ -2389,8 +2406,7 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.parse(await readRequestBody(req));
       const data = readData();
       const enabled = isAuthEnabled(data);
-      const usernameOk = ADMIN_PASSWORD || !data.admin?.username || String(body.username || "").trim() === data.admin.username;
-      if (!enabled || (usernameOk && verifyPassword(body.password, data.admin?.passwordHash))) {
+      if (!enabled || verifyPassword(body.password)) {
         const sessionId = crypto.randomUUID();
         sessions.set(sessionId, { expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
         setSessionCookie(res, sessionId);
