@@ -1803,8 +1803,9 @@ dialog::backdrop {
 .settings-page-card {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 14px;
+  align-items: start;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: clamp(14px, 2vw, 22px);
@@ -1818,6 +1819,23 @@ dialog::backdrop {
 .settings-page-card > footer,
 .settings-page-card > .settings-actions {
   grid-column: 1 / -1;
+}
+
+.settings-page-card > label:nth-of-type(1) {
+  grid-column: span 3;
+}
+
+.settings-page-card > label:nth-of-type(2) {
+  grid-column: span 6;
+}
+
+.settings-page-card > label:nth-of-type(3) {
+  grid-column: span 3;
+}
+
+.settings-page-card > .background-settings,
+.settings-page-card > .settings-options {
+  grid-column: span 4;
 }
 
 .settings-page-card > header,
@@ -1882,6 +1900,7 @@ dialog::backdrop {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
+  min-height: 86px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 55%),
     rgba(255, 255, 255, 0.035);
@@ -1904,6 +1923,15 @@ dialog::backdrop {
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 14%, transparent), transparent 42%),
     rgba(255, 255, 255, 0.045);
+}
+
+.settings-page-card > .settings-options,
+.settings-page-card > .background-settings {
+  align-self: start;
+}
+
+.settings-page-card > .settings-options {
+  align-content: start;
 }
 
 .auth-settings textarea {
@@ -2168,6 +2196,22 @@ dialog::backdrop {
   .widgets {
     grid-template-columns: 1fr;
   }
+
+  .settings-page-card {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .settings-page-card > label:nth-of-type(1),
+  .settings-page-card > label:nth-of-type(2),
+  .settings-page-card > label:nth-of-type(3),
+  .settings-page-card > .background-settings,
+  .settings-page-card > .settings-options {
+    grid-column: span 3;
+  }
+
+  .settings-page-card > .auth-settings {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2271,6 +2315,19 @@ dialog::backdrop {
   .settings-page-card > footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .settings-page-card,
+  .weather-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page-card > label:nth-of-type(1),
+  .settings-page-card > label:nth-of-type(2),
+  .settings-page-card > label:nth-of-type(3),
+  .settings-page-card > .background-settings,
+  .settings-page-card > .settings-options {
+    grid-column: 1 / -1;
   }
 
   .category-row {
