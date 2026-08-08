@@ -1872,21 +1872,23 @@ async function readProxmoxStatus(target, base) {
   const headers = target.tokenId && target.tokenSecret
     ? { Authorization: `PVEAPIToken=${target.tokenId}=${target.tokenSecret}` }
     : {};
-  const version = await requestJson(new URL("/api2/json/version", target.url).href, { headers });
   const metrics = [];
-  if (version.data?.version) metrics.push({ label: "Version", value: String(version.data.version) });
 
   if (!headers.Authorization) {
+    await requestHead(target.url).catch(async () => requestProxmoxJson(new URL("/api2/json/version", target.url).href, { headers: {} }));
     return {
       ...base,
       ok: true,
       status: "online",
-      message: "API erreichbar",
-      metrics
+      message: "Proxmox erreichbar",
+      metrics: [{ label: "Token", value: "fehlt" }]
     };
   }
 
-  const resources = await requestJson(new URL("/api2/json/cluster/resources", target.url).href, { headers });
+  const versionResult = await requestProxmoxJson(new URL("/api2/json/version", target.url).href, { headers }).catch((error) => ({ error }));
+  if (versionResult.data?.version) metrics.push({ label: "Version", value: String(versionResult.data.version) });
+
+  const resources = await requestProxmoxJson(new URL("/api2/json/cluster/resources", target.url).href, { headers });
   const data = Array.isArray(resources.data) ? resources.data : [];
   const nodes = data.filter((item) => item.type === "node");
   const guests = data.filter((item) => item.type === "qemu" || item.type === "lxc");
@@ -1895,6 +1897,7 @@ async function readProxmoxStatus(target, base) {
   const totalMemory = nodes.reduce((sum, item) => sum + Number(item.maxmem || 0), 0);
   const usedMemory = nodes.reduce((sum, item) => sum + Number(item.mem || 0), 0);
   const updates = await readProxmoxUpdates(target, headers, nodes);
+  if (versionResult.error) updates.debug.unshift(`version: ${shortDebugValue(versionResult.error.message || versionResult.error)}`);
   const updateValue = formatProxmoxUpdateValue(updates);
 
   metrics.push({ label: "Nodes", value: `${onlineNodes}/${nodes.length || 0}` });
@@ -1934,7 +1937,7 @@ async function readProxmoxUpdates(target, headers, nodes) {
   const results = await Promise.all(nodeNames.map(async (nodeName) => {
     const errors = [];
     try {
-      const payload = await requestJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/update`, target.url).href, { headers });
+      const payload = await requestProxmoxJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/update`, target.url).href, { headers });
       const updates = extractProxmoxUpdateList(payload);
       return { nodeName, count: updates.length, exact: true, source: "apt/update", errors };
     } catch (error) {
@@ -1942,7 +1945,7 @@ async function readProxmoxUpdates(target, headers, nodes) {
     }
 
     try {
-      const payload = await requestJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/versions`, target.url).href, { headers });
+      const payload = await requestProxmoxJson(new URL(`/api2/json/nodes/${encodeURIComponent(nodeName)}/apt/versions`, target.url).href, { headers });
       const updates = extractProxmoxVersionUpdates(payload);
       return { nodeName, count: updates.length, exact: false, source: "apt/versions", errors };
     } catch (error) {
@@ -1993,11 +1996,33 @@ function extractProxmoxVersionUpdates(payload) {
   });
 }
 
-async function requestJson(targetUrl, { headers = {} } = {}) {
+async function requestProxmoxJson(targetUrl, { headers = {} } = {}) {
+  const proxmoxHeaders = { Connection: "close", ...headers };
+  try {
+    return await requestJson(targetUrl, { headers: proxmoxHeaders, timeout: 10000 });
+  } catch (error) {
+    if (!isTransientNetworkError(error)) throw error;
+    return await requestJson(targetUrl, {
+      headers: proxmoxHeaders,
+      timeout: 15000,
+      requestOptions: { maxVersion: "TLSv1.2" }
+    });
+  }
+}
+
+function isTransientNetworkError(error) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || "").toLowerCase();
+  return ["ECONNRESET", "EPIPE", "ETIMEDOUT"].includes(code) || message.includes("socket hang up");
+}
+
+async function requestJson(targetUrl, { headers = {}, timeout = 5000, requestOptions = {} } = {}) {
   const response = await requestBuffer(targetUrl, {
     accept: "application/json,*/*",
     headers,
-    limit: 1_000_000
+    limit: 1_000_000,
+    timeout,
+    requestOptions
   });
   return JSON.parse(response.buffer.toString("utf8"));
 }
@@ -2109,7 +2134,7 @@ function requestJsonPost(targetUrl, { headers = {}, body = {} } = {}) {
   });
 }
 
-function requestBuffer(targetUrl, { accept, limit, headers = {} }) {
+function requestBuffer(targetUrl, { accept, limit, headers = {}, timeout = 5000, requestOptions = {} }) {
   return new Promise((resolve, reject) => {
     const parsed = parseHttpUrl(targetUrl);
     if (!parsed) {
@@ -2123,12 +2148,13 @@ function requestBuffer(targetUrl, { accept, limit, headers = {} }) {
       {
         headers: { Accept: accept, "User-Agent": "Homebase/1.0", ...headers },
         rejectUnauthorized: false,
-        timeout: 5000
+        timeout,
+        ...requestOptions
       },
       (response) => {
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           response.resume();
-          requestBuffer(new URL(response.headers.location, parsed.href).href, { accept, headers, limit }).then(resolve, reject);
+          requestBuffer(new URL(response.headers.location, parsed.href).href, { accept, headers, limit, timeout, requestOptions }).then(resolve, reject);
           return;
         }
         if (response.statusCode < 200 || response.statusCode >= 300) {
