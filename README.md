@@ -103,7 +103,7 @@ Die Compose-Datei verwendet `HOMEBASE_*` Variablen fuer Deployment-Details und s
 | `HOMEBASE_PORT` | `3000` | Externer Host-Port. |
 | `HOMEBASE_INTERNAL_PORT` | `3000` | Interner Container-Port und Wert fuer `PORT`. Normalerweise unveraendert lassen. |
 | `HOMEBASE_VOLUME_NAME` | `homebase_data` | Docker-Volume fuer Daten und Favicons. Fuer mehrere Stacks jeweils einen eigenen Namen setzen. |
-| `ADMIN_PASSWORD` | leer | Optionales Server-Passwort fuer den Zugriffsschutz. IPs ohne Login pflegst du in den Einstellungen. |
+| `ADMIN_PASSWORD` | leer | Optionales Server-Passwort als Login-Fallback, sobald eine IP-Allowlist gepflegt ist. Ohne IP-Liste ist Homebase frei erreichbar. |
 | `HOMEBASE_STATUS_TARGETS` | `[]` | Optionales JSON fuer Link-Statusanzeigen. Secrets bleiben in der Container-Umgebung. |
 
 Container-interne Variablen:
@@ -139,7 +139,7 @@ Profile werden direkt im Browser verwaltet. Jedes Profil hat eigene Kategorien u
 
 ## Admin-Modus
 
-Homebase startet im Startseiten-Modus: Links und Widgets sind sichtbar, Bearbeitung bleibt verborgen. Wenn `ADMIN_PASSWORD` gesetzt ist, sind Inhalte und Bearbeitung gesperrt, bis das Server-Passwort eingegeben wurde. IPs aus der Allowlist in den Einstellungen duerfen ohne Login direkt zugreifen.
+Homebase startet im Startseiten-Modus: Links und Widgets sind sichtbar, Bearbeitung bleibt verborgen. Ohne IPs in der Allowlist ist Homebase frei erreichbar. Sobald mindestens eine IP eingetragen ist, duerfen diese IPs ohne Login hinein; alle anderen brauchen `ADMIN_PASSWORD`. Ist kein `ADMIN_PASSWORD` gesetzt, bleibt nur die IP-Allowlist.
 
 Der Freigabe-Modus blendet im gesperrten Zustand den Admin-Hinweis aus. Das ist fuer Familien-, Werkstatt- oder Tablet-Ansichten gedacht, bei denen Homebase wie eine ruhige Startseite wirken soll.
 

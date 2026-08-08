@@ -657,7 +657,7 @@ function toPublicData(data, req) {
 }
 
 function isAuthEnabled(data) {
-  return Boolean(ADMIN_PASSWORD);
+  return getAllowedIpRules(data.admin).length > 0;
 }
 
 function getClientIp(req) {
@@ -673,8 +673,12 @@ function normalizeIpToken(value) {
   return ip;
 }
 
+function getAllowedIpRules(admin) {
+  return Array.isArray(admin?.allowedIps) ? admin.allowedIps.map(normalizeIpToken).filter(Boolean) : [];
+}
+
 function isAllowedIp(req, admin) {
-  const allowedIps = Array.isArray(admin?.allowedIps) ? admin.allowedIps.map(normalizeIpToken).filter(Boolean) : [];
+  const allowedIps = getAllowedIpRules(admin);
   if (!allowedIps.length) return false;
   const clientIp = getClientIp(req);
   return allowedIps.includes(clientIp);
@@ -2384,7 +2388,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/setup" && req.method === "POST") {
       const current = readData();
-      if (current.setupComplete && ADMIN_PASSWORD && !isAuthed(req)) {
+      if (current.setupComplete && isAuthEnabled(current) && !isAuthed(req)) {
         sendJson(res, 409, { error: "Setup already completed" });
         return;
       }
