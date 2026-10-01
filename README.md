@@ -335,4 +335,6 @@ Bei gemeinsamer Nutzung werden Aenderungen anhand des zuletzt geladenen Standes 
 
 Favicons werden pro Seiten-URL gespeichert und hoechstens einmal in 24 Stunden neu geladen. Auch fehlgeschlagene Abrufe werden einen Tag zwischengespeichert; ein vorhandenes Icon bleibt bei Fehlern erhalten. Gleichzeitige Abrufe derselben URL werden zusammengefasst. Auch dauerhaft offene Seiten aktualisieren ihre Icons nur taeglich.
 
+Der laufende Server aktualisiert die Favicons aller Profile auch ohne geoeffneten Browser. Er prueft nach dem Start und stuendlich auf abgelaufene Cache-Eintraege; nur mindestens 24 Stunden alte Icons werden neu abgerufen, nacheinander statt alle gleichzeitig. Der Docker-Container muss dafuer laufen.
+
 `npm test` prueft paralleles Speichern, geloeschte Eintraege, Konflikte und Favicon-Aktualisierungen mit isolierten lokalen Testservern.

@@ -12,6 +12,7 @@ const FAVICON_DIR = path.join(DATA_DIR, "favicons");
 const FAVICON_POLICY_VERSION = 2;
 const FAVICON_CACHE_MS = 24 * 60 * 60 * 1000;
 const faviconRequests = new Map();
+let faviconMaintenanceRunning = false;
 const BACKGROUND_DIR = path.join(DATA_DIR, "background");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
@@ -756,61 +757,67 @@ function sendFaviconFallback(res) {
   res.end(svg);
 }
 
+function readCachedFavicon(parsed) {
+  fs.mkdirSync(FAVICON_DIR, { recursive: true });
+  const cacheKey = crypto.createHash("sha256").update(parsed.href).digest("hex");
+  const cacheFile = path.join(FAVICON_DIR, `${cacheKey}.bin`);
+  const metaFile = path.join(FAVICON_DIR, `${cacheKey}.json`);
+  let meta = {};
+  try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
+  const fresh = meta.policyVersion === FAVICON_POLICY_VERSION && Date.now() - Number(meta.updatedAt || 0) < FAVICON_CACHE_MS;
+  return { cacheFile, metaFile, meta, fresh };
+}
+
+async function refreshCachedFavicon(parsed) {
+  const cached = readCachedFavicon(parsed);
+  if (cached.fresh) return cached;
+  let pending = faviconRequests.get(parsed.href);
+  if (!pending) {
+    pending = (async () => {
+      let meta = cached.meta;
+      try {
+        const icon = await fetchBestFavicon(parsed);
+        fs.writeFileSync(cached.cacheFile, icon.buffer);
+        meta = { contentType: icon.contentType };
+      } catch {
+        // Keep the previous image, and postpone another attempt for a day.
+      }
+      fs.writeFileSync(cached.metaFile, JSON.stringify({ ...meta, updatedAt: Date.now(), policyVersion: FAVICON_POLICY_VERSION }));
+      return readCachedFavicon(parsed);
+    })().finally(() => faviconRequests.delete(parsed.href));
+    faviconRequests.set(parsed.href, pending);
+  }
+  return pending;
+}
+
 async function serveFavicon(res, targetUrl) {
   const parsed = parseHttpUrl(targetUrl);
   if (!parsed) {
     sendFaviconFallback(res);
     return;
   }
-
-  fs.mkdirSync(FAVICON_DIR, { recursive: true });
-  const cacheKey = crypto.createHash("sha256").update(parsed.href).digest("hex");
-  const cacheFile = path.join(FAVICON_DIR, `${cacheKey}.bin`);
-  const metaFile = path.join(FAVICON_DIR, `${cacheKey}.json`);
-
-  if (fs.existsSync(metaFile)) {
-    let meta = {};
-    try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
-    if (meta.policyVersion === FAVICON_POLICY_VERSION && Date.now() - Number(meta.updatedAt || 0) < FAVICON_CACHE_MS) {
-      if (!fs.existsSync(cacheFile)) {
-        sendFaviconFallback(res);
-        return;
-      }
-      res.writeHead(200, {
-        "Content-Type": meta.contentType || "image/x-icon",
-        "Cache-Control": "public, max-age=86400"
-      });
-      fs.createReadStream(cacheFile).pipe(res);
-      return;
-    }
-  }
-
-  try {
-    let pending = faviconRequests.get(parsed.href);
-    if (!pending) {
-      pending = fetchBestFavicon(parsed).finally(() => faviconRequests.delete(parsed.href));
-      faviconRequests.set(parsed.href, pending);
-    }
-    const icon = await pending;
-    fs.writeFileSync(cacheFile, icon.buffer);
-    fs.writeFileSync(metaFile, JSON.stringify({ contentType: icon.contentType, updatedAt: Date.now(), policyVersion: FAVICON_POLICY_VERSION }, null, 2));
-    res.writeHead(200, {
-      "Content-Type": icon.contentType,
-      "Cache-Control": "public, max-age=86400"
-    });
-    res.end(icon.buffer);
-  } catch {
-    let previousMeta = {};
-    try { previousMeta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
-    fs.writeFileSync(metaFile, JSON.stringify({ ...previousMeta, updatedAt: Date.now(), policyVersion: FAVICON_POLICY_VERSION }));
-    if (fs.existsSync(cacheFile) && fs.existsSync(metaFile)) {
-      let meta = {};
-      try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
-      res.writeHead(200, { "Content-Type": meta.contentType || "image/x-icon", "Cache-Control": "public, max-age=86400" });
-      res.end(fs.readFileSync(cacheFile));
-      return;
-    }
+  const cached = await refreshCachedFavicon(parsed);
+  if (!fs.existsSync(cached.cacheFile)) {
     sendFaviconFallback(res);
+    return;
+  }
+  res.writeHead(200, { "Content-Type": cached.meta.contentType || "image/x-icon", "Cache-Control": "public, max-age=86400" });
+  fs.createReadStream(cached.cacheFile).pipe(res);
+}
+
+async function refreshStoredFavicons() {
+  if (faviconMaintenanceRunning) return;
+  faviconMaintenanceRunning = true;
+  try {
+    const urls = new Set(readData().profiles.flatMap((profile) => profile.links.map((link) => link.url)));
+    for (const url of urls) {
+      const parsed = parseHttpUrl(url);
+      if (parsed) await refreshCachedFavicon(parsed);
+    }
+  } catch (error) {
+    console.error(`Favicon-Aktualisierung fehlgeschlagen: ${error.message}`);
+  } finally {
+    faviconMaintenanceRunning = false;
   }
 }
 
@@ -2633,4 +2640,6 @@ const server = http.createServer(async (req, res) => {
 ensureDataFile();
 server.listen(PORT, HOST, () => {
   console.log(`Homebase running on http://${HOST}:${PORT}`);
+  setTimeout(refreshStoredFavicons, 1000).unref();
+  setInterval(refreshStoredFavicons, 60 * 60 * 1000).unref();
 });
