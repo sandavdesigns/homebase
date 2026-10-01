@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#150829" />
     <title>Homebase</title>
-    <link rel="stylesheet" href="/styles.css?v=product19" />
+    <link rel="stylesheet" href="/styles.css?v=product20" />
   </head>
   <body>
     <div class="custom-background is-active" id="customBackgroundA" aria-hidden="true"></div>
@@ -32,9 +32,9 @@
       </section>
 
       <section class="command-row" aria-label="Startseitenwerkzeuge">
-        <button id="searchToggleButton" type="button" aria-expanded="false">Suche</button>
+        <button id="searchToggleButton" type="button" hidden aria-expanded="true">Suche</button>
         <button id="googleSearchButton" type="button">Google</button>
-        <label class="search" id="searchPanel" hidden>
+        <label class="search" id="searchPanel">
           <span>Suchen</span>
           <input id="searchInput" type="search" placeholder="Link, Kategorie oder Google-Suche" autocomplete="off" />
         </label>
@@ -453,6 +453,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=product9"></script>
+    <script src="/app.js?v=product10"></script>
   </body>
 </html>

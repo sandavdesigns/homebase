@@ -1126,8 +1126,8 @@ textarea:focus {
 }
 
 .groups.is-tiles .link-list {
-  grid-template-columns: repeat(auto-fill, minmax(clamp(92px, 8vw, 156px), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(140px, 10vw, 176px), 1fr));
+  gap: 12px;
 }
 
 .groups.is-tiles .link-card {
@@ -1137,7 +1137,7 @@ textarea:focus {
 
 .groups.is-tiles .link-content {
   min-height: 0;
-  padding: 12px 9px 10px;
+  padding: clamp(10px, 1vw, 14px);
   align-content: center;
   justify-items: center;
   text-align: center;
@@ -1146,24 +1146,27 @@ textarea:focus {
 .groups.is-tiles .link-title {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: clamp(7px, 0.75vw, 11px);
   padding-right: 0;
-  font-size: clamp(0.74rem, 0.72rem + 0.16vw, 0.9rem);
-  line-height: 1.12;
+  font-size: 0.95rem;
+  line-height: 1.16;
 }
 
 .groups.is-tiles .link-title span {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .groups.is-tiles .favicon {
-  width: clamp(22px, 2vw, 32px);
-  height: clamp(22px, 2vw, 32px);
+  display: block;
+  width: clamp(30px, 3.1vw, 48px);
+  height: auto;
+  aspect-ratio: 1;
   flex-basis: auto;
-  border-radius: 7px;
+  object-fit: contain;
+  border-radius: 5px;
 }
 
 .groups.is-tiles .link-note {

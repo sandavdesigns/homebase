@@ -17,8 +17,18 @@ const state = {
   statusLoading: false,
   weatherLoading: false,
   query: "",
-  searchOpen: false
+  searchOpen: true
 };
+
+let serverSnapshot = null;
+let settingsSnapshot = null;
+let saveInProgress = false;
+
+function acceptServerData(data) {
+  serverSnapshot = structuredClone(data);
+  Object.assign(state, data);
+  syncActiveProfileAliases();
+}
 
 const elements = {
   title: document.querySelector("#pageTitle"),
@@ -217,7 +227,7 @@ function updateClock() {
 async function loadData() {
   const response = await fetch("/api/homebase");
   if (!response.ok) throw new Error("Startseite konnte nicht geladen werden.");
-  Object.assign(state, await response.json());
+  acceptServerData(await response.json());
   syncActiveProfileAliases();
   render();
   if (!state.setupComplete) elements.setupDialog.showModal();
@@ -233,51 +243,63 @@ function syncActiveProfileAliases() {
 }
 
 async function saveData(message = "Gespeichert") {
-  syncProfileFromAliases();
-  const response = await fetch("/api/homebase", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      schemaVersion: state.schemaVersion || 5,
-      setupComplete: state.setupComplete,
-      title: state.title,
-      subtitle: state.subtitle,
-      theme: state.theme,
-      appearance: state.appearance,
-      activeProfileId: state.activeProfileId,
-      widgets: state.widgets,
-      preferences: state.preferences,
-      admin: state.admin,
-      profiles: state.profiles
-    })
-  });
+  if (saveInProgress) throw new Error("Bitte warte, bis das Speichern abgeschlossen ist.");
+  saveInProgress = true;
+  try {
+    syncProfileFromAliases();
+    const response = await fetch("/api/homebase", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base: serverSnapshot,
+        revision: serverSnapshot?.revision,
+        schemaVersion: state.schemaVersion || 5,
+        setupComplete: state.setupComplete,
+        title: state.title,
+        subtitle: state.subtitle,
+        theme: state.theme,
+        appearance: state.appearance,
+        activeProfileId: state.activeProfileId,
+        widgets: state.widgets,
+        preferences: state.preferences,
+        admin: state.admin,
+        profiles: state.profiles
+      })
+    });
 
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    if (response.status === 401) openLoginDialog();
-    throw new Error(payload.error || "Speichern fehlgeschlagen.");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) openLoginDialog();
+      if (response.status === 409 || response.status === 428) await loadData();
+      throw new Error(payload.error || "Speichern fehlgeschlagen.");
+    }
+
+    acceptServerData(await response.json());
+    render();
+    showToast(message);
+  } finally {
+    saveInProgress = false;
   }
-
-  Object.assign(state, await response.json());
-  syncActiveProfileAliases();
-  render();
-  showToast(message);
 }
 
 async function saveSettingsData(payload, message = "Einstellungen gespeichert") {
   const response = await fetch("/api/homebase/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ ...payload, base: settingsSnapshot || serverSnapshot, revision: (settingsSnapshot || serverSnapshot)?.revision })
   });
 
   if (!response.ok) {
     const errorPayload = await response.json().catch(() => ({}));
     if (response.status === 401) openLoginDialog();
+    if (response.status === 409 || response.status === 428) {
+      await loadData();
+      openSettingsPage();
+    }
     throw new Error(errorPayload.error || "Einstellungen konnten nicht gespeichert werden.");
   }
 
-  Object.assign(state, await response.json());
+  acceptServerData(await response.json());
   syncActiveProfileAliases();
   render();
   showToast(message);
@@ -683,10 +705,8 @@ function formatStatusType(type) {
 }
 
 function renderSearch() {
-  const open = state.searchOpen || Boolean(state.query);
-  elements.searchPanel.hidden = !open;
-  elements.searchToggleButton.setAttribute("aria-expanded", String(open));
-  elements.searchToggleButton.textContent = open ? "Suche ausblenden" : "Suche";
+  elements.searchPanel.hidden = false;
+  elements.searchToggleButton.hidden = true;
 }
 
 function getNotes() {
@@ -875,7 +895,11 @@ function createLinkCard(link) {
   icon.alt = "";
   icon.loading = "lazy";
   icon.decoding = "async";
-  icon.src = `/api/favicon?url=${encodeURIComponent(link.url)}`;
+  icon.dataset.url = link.url;
+  icon.src = `/api/favicon?url=${encodeURIComponent(link.url)}&v=${Math.floor(Date.now() / 300000)}`;
+  icon.addEventListener("error", () => {
+    icon.src = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#35383f"/><text x="32" y="43" text-anchor="middle" fill="white" font-size="36">' + (link.title.trim().charAt(0).match(/[a-z0-9]/i)?.[0] || "?") + '</text></svg>');
+  }, { once: true });
   const titleText = document.createElement("span");
   titleText.textContent = link.title;
   title.append(icon, titleText);
@@ -1164,6 +1188,7 @@ function toggleSecretFields() {
 }
 
 function openSettingsPage() {
+  settingsSnapshot = structuredClone(serverSnapshot);
   if (!canEdit()) return openAdminDialog();
   elements.settingsTitle.value = state.title;
   elements.settingsSubtitle.value = state.subtitle;
@@ -1575,14 +1600,14 @@ async function saveSettings() {
     subtitle: elements.settingsSubtitle.value.trim(),
     theme: elements.themeSelect.value || "retro",
     appearance: {
-      ...(state.appearance || {}),
+      ...(settingsSnapshot?.appearance || {}),
       backgroundOpacity: normalizeBackgroundOpacity(Number(elements.settingsBackgroundOpacity.value) / 100),
       backgroundInterval: normalizeBackgroundInterval(elements.settingsBackgroundInterval.value),
       linkTransparency: normalizeTransparency(elements.settingsLinkTransparency.value, 72),
       categoryTransparency: normalizeTransparency(elements.settingsCategoryTransparency.value, 58)
     },
     preferences: {
-      ...(state.preferences || {}),
+      ...(settingsSnapshot?.preferences || {}),
       showCategoryCounts: elements.settingShowCategoryCounts.checked,
       compactCategoryLayout: elements.settingCompactCategoryLayout.checked,
       tileCategoryLayout: elements.settingTileCategoryLayout.checked,
@@ -1593,12 +1618,12 @@ async function saveSettings() {
       shareMode: elements.settingShareMode.checked
     },
     widgets: {
-      ...(state.widgets || {}),
+      ...(settingsSnapshot?.widgets || {}),
       googleSearch: elements.settingShowGoogleWidget.checked,
       linkStats: elements.settingShowStatsWidget.checked,
       statusOverview: elements.settingShowStatusWidget.checked,
       weather: {
-        ...(state.widgets?.weather || {}),
+        ...(settingsSnapshot?.widgets?.weather || {}),
         enabled: elements.settingShowWeatherWidget.checked,
         label: elements.settingWeatherLabel.value.trim() || "Zuhause",
         latitude: elements.settingWeatherLatitude.value.trim(),
@@ -1646,7 +1671,7 @@ async function uploadBackgroundImage(file) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || "Upload fehlgeschlagen");
   }
-  Object.assign(state, await response.json());
+  acceptServerData(await response.json());
 }
 
 async function removeBackgroundImage(id = "") {
@@ -1656,7 +1681,7 @@ async function removeBackgroundImage(id = "") {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || "Entfernen fehlgeschlagen");
   }
-  Object.assign(state, await response.json());
+  acceptServerData(await response.json());
   render();
   if (!elements.settingsPage.hidden) {
     renderBackgroundStatus();
@@ -1809,7 +1834,7 @@ async function runImport() {
     body: text
   });
   if (!response.ok) throw new Error((await response.json()).error || "Import fehlgeschlagen");
-  Object.assign(state, await response.json());
+  acceptServerData(await response.json());
   syncActiveProfileAliases();
   render();
   elements.importDialog.close();
@@ -2047,7 +2072,7 @@ async function completeSetup() {
     })
   });
   if (!response.ok) throw new Error((await response.json()).error || "Setup fehlgeschlagen");
-  Object.assign(state, await response.json());
+  acceptServerData(await response.json());
   state.auth = { ...(state.auth || {}), authenticated: true };
   syncActiveProfileAliases();
   render();
@@ -2404,4 +2429,31 @@ updateClock();
 window.setInterval(updateClock, 1000);
 window.setInterval(() => loadStatus().catch(() => {}), 60000);
 window.setInterval(() => loadWeather().catch(() => {}), 15 * 60 * 1000);
+async function refreshSharedData() {
+  if (document.hidden || saveInProgress || !serverSnapshot || !state.auth?.authenticated
+      || !elements.settingsPage.hidden || document.querySelector("dialog[open]") || state.noteComposerOpen) return;
+  if (JSON.stringify(state.profiles) !== JSON.stringify(serverSnapshot.profiles)
+      || JSON.stringify(state.widgets) !== JSON.stringify(serverSnapshot.widgets)) return;
+  const previous = serverSnapshot.revision;
+  const response = await fetch("/api/homebase", { cache: "no-store" });
+  if (!response.ok) return;
+  const data = await response.json();
+  if (saveInProgress || serverSnapshot.revision !== previous || document.querySelector("dialog[open]") || !elements.settingsPage.hidden) return;
+  if (data.revision !== previous) {
+    acceptServerData(data);
+    syncActiveProfileAliases();
+    render();
+  }
+}
+window.setInterval(() => refreshSharedData().catch(() => {}), 10000);
+window.addEventListener("focus", () => refreshSharedData().catch(() => {}));
+function refreshFavicons() {
+  if (document.hidden) return;
+  for (const icon of document.querySelectorAll(".favicon[data-url]")) {
+    const source = `/api/favicon?url=${encodeURIComponent(icon.dataset.url)}&v=${Math.floor(Date.now() / 300000)}`;
+    if (icon.getAttribute("src") !== source) icon.src = source;
+  }
+}
+window.setInterval(refreshFavicons, 300000);
+window.addEventListener("focus", refreshFavicons);
 loadData().catch((error) => showToast(error.message));

@@ -115,40 +115,57 @@ function writeData(data) {
     },
     schemaVersion: data.schemaVersion || 5
   });
-  fs.writeFileSync(DATA_FILE, `${JSON.stringify(safeData, null, 2)}\n`);
+  const temporaryFile = `${DATA_FILE}.tmp`;
+  fs.writeFileSync(temporaryFile, `${JSON.stringify(safeData, null, 2)}\n`);
+  fs.renameSync(temporaryFile, DATA_FILE);
   return safeData;
 }
 
-function writeSettingsData(settings) {
+function dataRevision(data) {
+  return crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
+}
+
+// Merge only edits since the client's snapshot; arrays of records use stable IDs.
+function mergeEdits(base, edited, current) {
+  const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  if (equal(base, edited)) return current;
+  if (equal(base, current) || equal(edited, current)) return edited;
+  const records = (value) => Array.isArray(value) && value.every((item) => item && typeof item.id === "string");
+  if (records(base) && records(edited) && records(current)) {
+    const byId = (items) => new Map(items.map((item) => [item.id, item]));
+    const before = byId(base), after = byId(edited), latest = byId(current);
+    return [...new Set([...latest.keys(), ...after.keys()])]
+      .map((id) => mergeEdits(before.get(id), after.get(id), latest.get(id)))
+      .filter((item) => item !== undefined);
+  }
+  const object = (value) => value && typeof value === "object" && !Array.isArray(value);
+  if (object(base) && object(edited) && object(current)) {
+    return Object.fromEntries([...new Set([...Object.keys(base), ...Object.keys(edited), ...Object.keys(current)])]
+      .filter((key) => !["__proto__", "constructor", "prototype"].includes(key))
+      .map((key) => [key, mergeEdits(base[key], edited[key], current[key])])
+      .filter(([, value]) => value !== undefined));
+  }
+  const error = new Error("Dieser Eintrag wurde inzwischen von jemand anderem geaendert oder geloescht. Die Seite wurde aktualisiert. Bitte pruefe deine Aenderung erneut.");
+  error.statusCode = 409;
+  throw error;
+}
+
+function saveClientEdits(payload, req, settingsOnly = false) {
   const current = readData();
-  return writeData({
-    ...current,
-    title: settings.title ?? current.title,
-    subtitle: settings.subtitle ?? current.subtitle,
-    theme: settings.theme ?? current.theme,
-    appearance: {
-      ...(current.appearance || {}),
-      ...(settings.appearance || {})
-    },
-    widgets: {
-      ...(current.widgets || {}),
-      ...(settings.widgets || {}),
-      weather: {
-        ...(current.widgets?.weather || {}),
-        ...(settings.widgets?.weather || {})
-      }
-    },
-    preferences: {
-      ...(current.preferences || {}),
-      ...(settings.preferences || {})
-    },
-    admin: {
-      ...(current.admin || {}),
-      allowedIps: settings.admin?.allowedIps ?? current.admin?.allowedIps ?? []
-    },
-    activeProfileId: current.activeProfileId,
-    profiles: current.profiles
-  });
+  if (!payload.base || !payload.revision || dataRevision(normalizeData(payload.base)) !== payload.revision) {
+    const error = new Error("Bitte lade die Seite neu, bevor du speicherst.");
+    error.statusCode = 428;
+    throw error;
+  }
+  const allowed = settingsOnly
+    ? ["title", "subtitle", "theme", "appearance", "preferences", "widgets", "admin"]
+    : ["setupComplete", "title", "subtitle", "theme", "appearance", "activeProfileId", "widgets", "preferences", "admin", "profiles"];
+  const latest = toPublicData(current, req);
+  const updates = {};
+  for (const key of allowed) {
+    if (Object.hasOwn(payload, key)) updates[key] = mergeEdits(payload.base[key], payload[key], latest[key]);
+  }
+  return writeData({ ...current, ...updates });
 }
 
 function normalizeData(data) {
@@ -643,6 +660,7 @@ function toPublicData(data, req) {
   const publicData = authenticated ? data : createLockedData(data);
   return {
     ...publicData,
+    revision: authenticated ? dataRevision(data) : "",
     admin: {
       allowedIps: authenticated ? data.admin?.allowedIps || [] : [],
       enabled: authEnabled,
@@ -730,7 +748,7 @@ function sendFaviconFallback(res) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#160b27"/><path d="M14 44h36M18 20h28M20 32h24" stroke="#26f4ff" stroke-width="5" stroke-linecap="round"/><path d="M14 44h36M18 20h28M20 32h24" stroke="#ff3df2" stroke-width="2" stroke-linecap="round"/></svg>`;
   res.writeHead(200, {
     "Content-Type": "image/svg+xml; charset=utf-8",
-    "Cache-Control": "public, max-age=86400"
+    "Cache-Control": "no-store"
   });
   res.end(svg);
 }
@@ -743,30 +761,40 @@ async function serveFavicon(res, targetUrl) {
   }
 
   fs.mkdirSync(FAVICON_DIR, { recursive: true });
-  const cacheKey = crypto.createHash("sha256").update(parsed.origin).digest("hex");
+  const cacheKey = crypto.createHash("sha256").update(parsed.href).digest("hex");
   const cacheFile = path.join(FAVICON_DIR, `${cacheKey}.bin`);
   const metaFile = path.join(FAVICON_DIR, `${cacheKey}.json`);
 
   if (fs.existsSync(cacheFile) && fs.existsSync(metaFile)) {
-    const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
+    let meta = {};
+    try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
+    if (Date.now() - Number(meta.updatedAt || 0) < 6 * 60 * 60 * 1000) {
     res.writeHead(200, {
       "Content-Type": meta.contentType || "image/x-icon",
-      "Cache-Control": "public, max-age=604800"
+      "Cache-Control": "public, max-age=300"
     });
     fs.createReadStream(cacheFile).pipe(res);
     return;
+    }
   }
 
   try {
     const icon = await fetchBestFavicon(parsed);
     fs.writeFileSync(cacheFile, icon.buffer);
-    fs.writeFileSync(metaFile, JSON.stringify({ contentType: icon.contentType }, null, 2));
+    fs.writeFileSync(metaFile, JSON.stringify({ contentType: icon.contentType, updatedAt: Date.now() }, null, 2));
     res.writeHead(200, {
       "Content-Type": icon.contentType,
-      "Cache-Control": "public, max-age=604800"
+      "Cache-Control": "public, max-age=300"
     });
     res.end(icon.buffer);
   } catch {
+    if (fs.existsSync(cacheFile) && fs.existsSync(metaFile)) {
+      let meta = {};
+      try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
+      res.writeHead(200, { "Content-Type": meta.contentType || "image/x-icon", "Cache-Control": "no-store" });
+      res.end(fs.readFileSync(cacheFile));
+      return;
+    }
     sendFaviconFallback(res);
   }
 }
@@ -935,7 +963,7 @@ function contentTypeForExtension(extension) {
 }
 
 async function fetchBestFavicon(pageUrl) {
-  const html = await requestBuffer(pageUrl.href, { accept: "text/html,*/*", limit: 250_000 }).catch(() => null);
+  const html = await requestBuffer(pageUrl.href, { accept: "text/html,*/*", limit: 1_500_000 }).catch(() => null);
   const candidates = [];
 
   if (html?.buffer) {
@@ -944,13 +972,22 @@ async function fetchBestFavicon(pageUrl) {
   }
 
   candidates.push(new URL("/favicon.ico", pageUrl.origin).href);
+  candidates.push(new URL("/favicon.png", pageUrl.origin).href);
+  candidates.push(new URL("/favicon.svg", pageUrl.origin).href);
   candidates.push(new URL("/apple-touch-icon.png", pageUrl.origin).href);
 
   const uniqueCandidates = [...new Set(candidates)];
   for (const candidate of uniqueCandidates) {
     try {
       const response = await requestBuffer(candidate, { accept: "image/*,*/*", limit: 500_000 });
-      if (response.buffer.length > 0 && response.contentType.startsWith("image/")) return response;
+      const bytes = response.buffer;
+      const inferred = bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ? "image/png"
+        : bytes.subarray(0, 4).equals(Buffer.from([0, 0, 1, 0])) ? "image/x-icon"
+        : bytes[0] === 255 && bytes[1] === 216 ? "image/jpeg"
+        : /^GIF8/.test(bytes.subarray(0, 4).toString()) ? "image/gif" : "";
+      if (bytes.length > 0 && (response.contentType.startsWith("image/") || inferred)) {
+        return { ...response, contentType: inferred || response.contentType };
+      }
     } catch {
       // Try the next declared or conventional favicon location.
     }
@@ -1013,7 +1050,7 @@ function extractIconUrls(html, pageUrl) {
     const rel = attrs.rel || "";
     const href = attrs.href || "";
     if (href && /\b(icon|apple-touch-icon)\b/i.test(rel)) {
-      urls.push(new URL(href, pageUrl.href).href);
+      try { urls.push(new URL(href, pageUrl.href).href); } catch {}
     }
   }
   return urls;
@@ -2169,6 +2206,8 @@ function requestBuffer(targetUrl, { accept, limit, headers = {}, timeout = 5000,
 
         const chunks = [];
         let size = 0;
+        response.on("error", reject);
+        response.on("aborted", () => reject(new Error("Response aborted")));
         response.on("data", (chunk) => {
           size += chunk.length;
           if (size > limit) {
@@ -2373,7 +2412,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/homebase" && req.method === "PUT") {
       if (!requireAuth(req, res)) return;
       const body = await readRequestBody(req);
-      const saved = writeData(JSON.parse(body));
+      const saved = saveClientEdits(JSON.parse(body), req);
       sendJson(res, 200, toPublicData(saved, req));
       return;
     }
@@ -2381,7 +2420,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/homebase/settings" && req.method === "PUT") {
       if (!requireAuth(req, res)) return;
       const body = await readRequestBody(req);
-      const saved = writeSettingsData(JSON.parse(body));
+      const saved = saveClientEdits(JSON.parse(body), req, true);
       sendJson(res, 200, toPublicData(saved, req));
       return;
     }
@@ -2564,7 +2603,7 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 405, { error: "Method not allowed" });
   } catch (error) {
-    sendJson(res, 400, { error: error.message || "Bad request" });
+    sendJson(res, error.statusCode || 400, { error: error.message || "Bad request" });
   }
 });
 
