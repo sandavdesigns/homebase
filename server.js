@@ -9,6 +9,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const DATA_DIR = process.env.DATA_DIR || "/data";
 const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const FAVICON_DIR = path.join(DATA_DIR, "favicons");
+const FAVICON_POLICY_VERSION = 2;
 const BACKGROUND_DIR = path.join(DATA_DIR, "background");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
@@ -768,20 +769,20 @@ async function serveFavicon(res, targetUrl) {
   if (fs.existsSync(cacheFile) && fs.existsSync(metaFile)) {
     let meta = {};
     try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
-    if (Date.now() - Number(meta.updatedAt || 0) < 6 * 60 * 60 * 1000) {
-    res.writeHead(200, {
-      "Content-Type": meta.contentType || "image/x-icon",
-      "Cache-Control": "public, max-age=300"
-    });
-    fs.createReadStream(cacheFile).pipe(res);
-    return;
+    if (meta.policyVersion === FAVICON_POLICY_VERSION && Date.now() - Number(meta.updatedAt || 0) < 6 * 60 * 60 * 1000) {
+      res.writeHead(200, {
+        "Content-Type": meta.contentType || "image/x-icon",
+        "Cache-Control": "public, max-age=300"
+      });
+      fs.createReadStream(cacheFile).pipe(res);
+      return;
     }
   }
 
   try {
     const icon = await fetchBestFavicon(parsed);
     fs.writeFileSync(cacheFile, icon.buffer);
-    fs.writeFileSync(metaFile, JSON.stringify({ contentType: icon.contentType, updatedAt: Date.now() }, null, 2));
+    fs.writeFileSync(metaFile, JSON.stringify({ contentType: icon.contentType, updatedAt: Date.now(), policyVersion: FAVICON_POLICY_VERSION }, null, 2));
     res.writeHead(200, {
       "Content-Type": icon.contentType,
       "Cache-Control": "public, max-age=300"
@@ -1050,10 +1051,18 @@ function extractIconUrls(html, pageUrl) {
     const rel = attrs.rel || "";
     const href = attrs.href || "";
     if (href && /\b(icon|apple-touch-icon)\b/i.test(rel)) {
-      try { urls.push(new URL(href, pageUrl.href).href); } catch {}
+      try {
+        const url = new URL(href, pageUrl.href);
+        if (!parseHttpUrl(url.href)) continue;
+        // Prefer explicit scalable/raster artwork over conventional framework ICO files.
+        const format = String(attrs.type || "").toLowerCase();
+        const score = /svg/.test(format) || /\.svg$/i.test(url.pathname) ? 3
+          : /png|webp|avif/.test(format) || /\.(png|webp|avif)$/i.test(url.pathname) ? 2 : 1;
+        urls.push({ url: url.href, score });
+      } catch {}
     }
   }
-  return urls;
+  return urls.sort((a, b) => b.score - a.score).map((icon) => icon.url);
 }
 
 function readHtmlAttrs(tag) {

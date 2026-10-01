@@ -80,8 +80,15 @@ test("shared edits and favicon refresh", async (t) => {
 
   let icon = Buffer.from([0, 0, 1, 0, 1, 0, 12]);
   let available = true;
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 42]);
   fixture.on("request", (req, res) => {
-    if (req.url === "/a" || req.url === "/missing") {
+    if (req.url === "/login") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end('<link rel="icon" href="/custom.ico" type="image/x-icon" sizes="16x16"><link rel="icon" href="/brand.png">');
+    } else if (req.url === "/brand.png") {
+      res.writeHead(200, { "Content-Type": "image/png" });
+      res.end(png);
+    } else if (req.url === "/a" || req.url === "/missing") {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end('<link rel="icon" href="http://["><link rel="icon" href="/custom.ico">');
     } else if (req.url === "/custom.ico" && available) {
@@ -106,4 +113,9 @@ test("shared edits and favicon refresh", async (t) => {
   assert.equal(fallback.headers.get("cache-control"), "no-store");
   available = true;
   assert.deepEqual((await favicon(`${fixtureUrl}/missing`)).bytes, icon);
+  const loginUrl = `${fixtureUrl}/login`;
+  const loginKey = crypto.createHash("sha256").update(loginUrl).digest("hex");
+  fs.writeFileSync(path.join(directory, "favicons", `${loginKey}.bin`), icon);
+  fs.writeFileSync(path.join(directory, "favicons", `${loginKey}.json`), JSON.stringify({ contentType: "image/x-icon", updatedAt: Date.now() }));
+  assert.deepEqual((await favicon(loginUrl)).bytes, png);
 });
