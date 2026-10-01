@@ -10,6 +10,8 @@ const DATA_DIR = process.env.DATA_DIR || "/data";
 const DATA_FILE = path.join(DATA_DIR, "homebase.json");
 const FAVICON_DIR = path.join(DATA_DIR, "favicons");
 const FAVICON_POLICY_VERSION = 2;
+const FAVICON_CACHE_MS = 24 * 60 * 60 * 1000;
+const faviconRequests = new Map();
 const BACKGROUND_DIR = path.join(DATA_DIR, "background");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
@@ -749,7 +751,7 @@ function sendFaviconFallback(res) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#160b27"/><path d="M14 44h36M18 20h28M20 32h24" stroke="#26f4ff" stroke-width="5" stroke-linecap="round"/><path d="M14 44h36M18 20h28M20 32h24" stroke="#ff3df2" stroke-width="2" stroke-linecap="round"/></svg>`;
   res.writeHead(200, {
     "Content-Type": "image/svg+xml; charset=utf-8",
-    "Cache-Control": "no-store"
+    "Cache-Control": "public, max-age=86400"
   });
   res.end(svg);
 }
@@ -766,13 +768,17 @@ async function serveFavicon(res, targetUrl) {
   const cacheFile = path.join(FAVICON_DIR, `${cacheKey}.bin`);
   const metaFile = path.join(FAVICON_DIR, `${cacheKey}.json`);
 
-  if (fs.existsSync(cacheFile) && fs.existsSync(metaFile)) {
+  if (fs.existsSync(metaFile)) {
     let meta = {};
     try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
-    if (meta.policyVersion === FAVICON_POLICY_VERSION && Date.now() - Number(meta.updatedAt || 0) < 6 * 60 * 60 * 1000) {
+    if (meta.policyVersion === FAVICON_POLICY_VERSION && Date.now() - Number(meta.updatedAt || 0) < FAVICON_CACHE_MS) {
+      if (!fs.existsSync(cacheFile)) {
+        sendFaviconFallback(res);
+        return;
+      }
       res.writeHead(200, {
         "Content-Type": meta.contentType || "image/x-icon",
-        "Cache-Control": "public, max-age=300"
+        "Cache-Control": "public, max-age=86400"
       });
       fs.createReadStream(cacheFile).pipe(res);
       return;
@@ -780,19 +786,27 @@ async function serveFavicon(res, targetUrl) {
   }
 
   try {
-    const icon = await fetchBestFavicon(parsed);
+    let pending = faviconRequests.get(parsed.href);
+    if (!pending) {
+      pending = fetchBestFavicon(parsed).finally(() => faviconRequests.delete(parsed.href));
+      faviconRequests.set(parsed.href, pending);
+    }
+    const icon = await pending;
     fs.writeFileSync(cacheFile, icon.buffer);
     fs.writeFileSync(metaFile, JSON.stringify({ contentType: icon.contentType, updatedAt: Date.now(), policyVersion: FAVICON_POLICY_VERSION }, null, 2));
     res.writeHead(200, {
       "Content-Type": icon.contentType,
-      "Cache-Control": "public, max-age=300"
+      "Cache-Control": "public, max-age=86400"
     });
     res.end(icon.buffer);
   } catch {
+    let previousMeta = {};
+    try { previousMeta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
+    fs.writeFileSync(metaFile, JSON.stringify({ ...previousMeta, updatedAt: Date.now(), policyVersion: FAVICON_POLICY_VERSION }));
     if (fs.existsSync(cacheFile) && fs.existsSync(metaFile)) {
       let meta = {};
       try { meta = JSON.parse(fs.readFileSync(metaFile, "utf8")); } catch {}
-      res.writeHead(200, { "Content-Type": meta.contentType || "image/x-icon", "Cache-Control": "no-store" });
+      res.writeHead(200, { "Content-Type": meta.contentType || "image/x-icon", "Cache-Control": "public, max-age=86400" });
       res.end(fs.readFileSync(cacheFile));
       return;
     }

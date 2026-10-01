@@ -23,6 +23,7 @@ const state = {
 let serverSnapshot = null;
 let settingsSnapshot = null;
 let saveInProgress = false;
+const FAVICON_REFRESH_MS = 24 * 60 * 60 * 1000;
 
 function acceptServerData(data) {
   serverSnapshot = structuredClone(data);
@@ -896,7 +897,7 @@ function createLinkCard(link) {
   icon.loading = "lazy";
   icon.decoding = "async";
   icon.dataset.url = link.url;
-  icon.src = `/api/favicon?url=${encodeURIComponent(link.url)}&policy=2&v=${Math.floor(Date.now() / 300000)}`;
+  icon.src = `/api/favicon?url=${encodeURIComponent(link.url)}&policy=2&v=${Math.floor(Date.now() / FAVICON_REFRESH_MS)}`;
   icon.addEventListener("error", () => {
     icon.src = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#35383f"/><text x="32" y="43" text-anchor="middle" fill="white" font-size="36">' + (link.title.trim().charAt(0).match(/[a-z0-9]/i)?.[0] || "?") + '</text></svg>');
   }, { once: true });
@@ -2450,10 +2451,10 @@ window.addEventListener("focus", () => refreshSharedData().catch(() => {}));
 function refreshFavicons() {
   if (document.hidden) return;
   for (const icon of document.querySelectorAll(".favicon[data-url]")) {
-    const source = `/api/favicon?url=${encodeURIComponent(icon.dataset.url)}&policy=2&v=${Math.floor(Date.now() / 300000)}`;
+    const source = `/api/favicon?url=${encodeURIComponent(icon.dataset.url)}&policy=2&v=${Math.floor(Date.now() / FAVICON_REFRESH_MS)}`;
     if (icon.getAttribute("src") !== source) icon.src = source;
   }
 }
-window.setInterval(refreshFavicons, 300000);
+window.setInterval(refreshFavicons, FAVICON_REFRESH_MS);
 window.addEventListener("focus", refreshFavicons);
 loadData().catch((error) => showToast(error.message));

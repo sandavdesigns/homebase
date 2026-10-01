@@ -333,6 +333,6 @@ Die lokale Suche ist immer sichtbar. In der Kachelansicht sind Symbole und Titel
 
 Bei gemeinsamer Nutzung werden Aenderungen anhand des zuletzt geladenen Standes zusammengefuehrt. Unabhaengige Bearbeitungen bleiben erhalten. Wurde derselbe Wert bereits anders geaendert oder der bearbeitete Eintrag geloescht, wird das Speichern gestoppt und die aktuelle Seite geladen. Geoeffnete Formulare werden nicht durch die automatische Aktualisierung alle zehn Sekunden ersetzt. Nach diesem Update muessen bereits offene Browserseiten einmal neu geladen werden.
 
-Favicons werden pro Seiten-URL gespeichert und spaetestens beim naechsten Abruf nach sechs Stunden neu geladen. Fehlende Icons werden erneut versucht; bei einem voruebergehenden Fehler bleibt ein vorhandenes Icon erhalten. Auch dauerhaft offene Seiten pruefen ihre Icons regelmaessig.
+Favicons werden pro Seiten-URL gespeichert und hoechstens einmal in 24 Stunden neu geladen. Auch fehlgeschlagene Abrufe werden einen Tag zwischengespeichert; ein vorhandenes Icon bleibt bei Fehlern erhalten. Gleichzeitige Abrufe derselben URL werden zusammengefasst. Auch dauerhaft offene Seiten aktualisieren ihre Icons nur taeglich.
 
 `npm test` prueft paralleles Speichern, geloeschte Eintraege, Konflikte und Favicon-Aktualisierungen mit isolierten lokalen Testservern.

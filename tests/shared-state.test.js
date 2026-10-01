@@ -80,6 +80,7 @@ test("shared edits and favicon refresh", async (t) => {
 
   let icon = Buffer.from([0, 0, 1, 0, 1, 0, 12]);
   let available = true;
+  let iconRequests = 0;
   const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 42]);
   fixture.on("request", (req, res) => {
     if (req.url === "/login") {
@@ -88,10 +89,11 @@ test("shared edits and favicon refresh", async (t) => {
     } else if (req.url === "/brand.png") {
       res.writeHead(200, { "Content-Type": "image/png" });
       res.end(png);
-    } else if (req.url === "/a" || req.url === "/missing") {
+    } else if (req.url === "/a" || req.url === "/missing" || req.url === "/parallel") {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end('<link rel="icon" href="http://["><link rel="icon" href="/custom.ico">');
     } else if (req.url === "/custom.ico" && available) {
+      iconRequests += 1;
       res.writeHead(200, { "Content-Type": "application/octet-stream" });
       res.end(icon);
     } else { res.writeHead(404); res.end(); }
@@ -110,9 +112,19 @@ test("shared edits and favicon refresh", async (t) => {
   assert.deepEqual((await favicon(`${fixtureUrl}/a`)).bytes, icon);
   available = false;
   const fallback = await favicon(`${fixtureUrl}/missing`);
-  assert.equal(fallback.headers.get("cache-control"), "no-store");
+  assert.equal(fallback.headers.get("cache-control"), "public, max-age=86400");
   available = true;
+  assert.deepEqual((await favicon(`${fixtureUrl}/missing`)).bytes, fallback.bytes);
+  const missingKey = crypto.createHash("sha256").update(`${fixtureUrl}/missing`).digest("hex");
+  fs.writeFileSync(path.join(directory, "favicons", `${missingKey}.json`), JSON.stringify({ updatedAt: 1, policyVersion: 2 }));
   assert.deepEqual((await favicon(`${fixtureUrl}/missing`)).bytes, icon);
+  const cachedIcon = Buffer.from(icon);
+  icon = Buffer.from([0, 0, 1, 0, 1, 0, 100]);
+  assert.deepEqual((await favicon(`${fixtureUrl}/missing`)).bytes, cachedIcon);
+  const requestsBefore = iconRequests;
+  const simultaneous = await Promise.all(Array.from({ length: 4 }, () => favicon(`${fixtureUrl}/parallel`)));
+  assert.equal(iconRequests - requestsBefore, 1);
+  simultaneous.forEach((result) => assert.deepEqual(result.bytes, icon));
   const loginUrl = `${fixtureUrl}/login`;
   const loginKey = crypto.createHash("sha256").update(loginUrl).digest("hex");
   fs.writeFileSync(path.join(directory, "favicons", `${loginKey}.bin`), icon);
